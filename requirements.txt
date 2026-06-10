@@ -1,0 +1,10 @@
+# Python 3.12 — เวอร์ชันที่ใช้จริงในการพัฒนา (pin เพื่อ reproducibility ของวิทยานิพนธ์)
+numpy==2.4.2
+pandas==3.0.1
+xarray==2025.11.0
+dask==2026.3.0
+netCDF4==1.7.4
+cdsapi==0.7.7
+scikit-learn==1.8.0
+lightgbm==4.6.0
+imbalanced-learn==0.14.1

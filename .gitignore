@@ -1,0 +1,16 @@
+# ข้อมูล netCDF/CSV ขนาดใหญ่ — สร้างใหม่ได้ด้วยสคริปต์ใน scripts/
+data/
+
+# log การดาวน์โหลด
+logs/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# OS
+Thumbs.db
+desktop.ini
