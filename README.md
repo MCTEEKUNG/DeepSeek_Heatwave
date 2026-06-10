@@ -30,8 +30,8 @@ scripts/
   units_utils.py       ด่านหน่วย (Kelvin→°C, fail loudly)
   heatwave_target.py   นิยาม target (percentile + ≥3 วันติดกัน)
   cv.py                blocked/rolling-origin time-series CV (กัน leakage)
-  evaluate.py          Brier/BSS/AUC/reliability
-  models.py            model registry (logistic / lgbm / balanced_rf)
+  evaluate.py          Brier/BSS/AUC/reliability + baselines (seasonal climatology, persistence)
+  models.py            model registry (logistic / lgbm ไม่ถ่วงน้ำหนัก = หลัก ; *_balanced / balanced_rf = ablation)
   download_*.py        สคริปต์ดึงข้อมูล (resume + validate ได้)
 data/    raw/ + processed/   (ไม่ commit)
 docs/    spec และเอกสาร
@@ -51,6 +51,7 @@ pip install -r requirements.txt
 - [x] โมดูลพื้นฐาน 5 ตัว + self-test ผ่าน
 - [ ] ดาวน์โหลด ERA5 ให้ครบ 1994–2023 (กำลังรัน)
 - [ ] ตัดสินนิยาม target เชิงพื้นที่ (regional-mean vs area-fraction)
+- [x] BSS รับ baseline จากชุด train + baseline helpers (seasonal climatology, conditional persistence)
+- [x] โมเดลไม่ถ่วงน้ำหนักเป็นค่าเริ่มต้น (`logistic`, `lgbm`) ; ตัวถ่วงน้ำหนักเป็น ablation
 - [ ] `build_dataset.py` (ประกอบ feature ตาม lead time, lag Niño3.4 1 เดือน)
-- [ ] baselines (seasonal climatology, persistence) + `train.py`
-- [ ] calibration ของโมเดลถ่วงน้ำหนัก + ประเมินผล
+- [ ] `train.py` + recalibration ของโมเดล ablation บน validation block แยกตามเวลา + ประเมินผล

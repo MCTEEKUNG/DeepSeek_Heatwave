@@ -4,9 +4,15 @@
 ทุกโมเดลใช้ interface เดียวกัน (sklearn): .fit(X, y) / .predict_proba(X)
 การเพิ่มโมเดลใหม่ = เพิ่ม 1 รายการใน MODEL_REGISTRY เท่านั้น
 
-ค่าเริ่มต้นถูกตั้งให้รับมือ "เหตุการณ์หายาก (class imbalance)" ของคลื่นความร้อน:
-  - logistic / lgbm : class_weight="balanced"
-  - balanced_rf      : สุ่ม under-sample คลาสเด่นในแต่ละต้นไม้ (Chen et al.) — งานวิจัยรองรับ
+นโยบายเรื่อง class imbalance (สำคัญต่องานนี้):
+  งานวัดผลด้วย Brier/BSS/reliability ซึ่งต้องการ "ความน่าจะเป็นที่ calibrate ดี"
+  การถ่วงน้ำหนักคลาส (class_weight="balanced") จะดันความน่าจะเป็นของเหตุการณ์หายาก
+  ให้สูงเกินจริงอย่างเป็นระบบ -> Brier/reliability แย่ลงทั้งที่ AUC อาจดูดี
+  - ชื่อหลัก  logistic / lgbm           : "ไม่ถ่วงน้ำหนัก" (ค่าเริ่มต้นของงานนี้)
+  - ชื่อเสริม logistic_balanced / lgbm_balanced / balanced_rf : ตัวถ่วงน้ำหนัก
+    เก็บไว้เปรียบเทียบเป็น ablation ในเล่ม — ถ้าจะใช้รายงานจริงต้อง recalibrate
+    บน validation block ที่แยกตามเวลาเสียก่อน (ทำใน train.py ไม่ใช่ที่นี่
+    เพราะ CalibratedClassifierCV ใช้ KFold ภายในซึ่ง leak กับ time series)
 """
 from __future__ import annotations
 
@@ -19,21 +25,33 @@ RANDOM_STATE = 42
 
 
 def _logistic() -> LogisticRegression:
+    return LogisticRegression(max_iter=1000)
+
+
+def _logistic_balanced() -> LogisticRegression:
     return LogisticRegression(max_iter=1000, class_weight="balanced")
 
 
-def _lgbm() -> LGBMClassifier:
-    return LGBMClassifier(
+def _lgbm_params(**extra) -> dict:
+    return dict(
         n_estimators=400,
         learning_rate=0.03,
         num_leaves=31,
         subsample=0.8,
         colsample_bytree=0.8,
-        class_weight="balanced",
         n_jobs=-1,
         random_state=RANDOM_STATE,
         verbose=-1,
+        **extra,
     )
+
+
+def _lgbm() -> LGBMClassifier:
+    return LGBMClassifier(**_lgbm_params())
+
+
+def _lgbm_balanced() -> LGBMClassifier:
+    return LGBMClassifier(**_lgbm_params(class_weight="balanced"))
 
 
 def _balanced_rf() -> BalancedRandomForestClassifier:
@@ -49,8 +67,12 @@ def _balanced_rf() -> BalancedRandomForestClassifier:
 
 # ทะเบียน: ชื่อ -> factory ที่คืน estimator ใหม่ (เพิ่มโมเดลใหม่ที่นี่)
 MODEL_REGISTRY: dict[str, Callable[[], object]] = {
+    # ไม่ถ่วงน้ำหนัก = ค่าเริ่มต้นของงานนี้ (probability ที่ calibrate ดี)
     "logistic": _logistic,
     "lgbm": _lgbm,
+    # ถ่วงน้ำหนัก = เก็บไว้เป็น ablation (ระวัง: probability เฟ้อ ต้อง recalibrate ก่อนใช้จริง)
+    "logistic_balanced": _logistic_balanced,
+    "lgbm_balanced": _lgbm_balanced,
     "balanced_rf": _balanced_rf,
 }
 
@@ -85,6 +107,17 @@ def _selftest() -> None:
         assert proba.shape == (len(y), 2), (name, proba.shape)
         assert proba.min() >= 0 and proba.max() <= 1, name
         print(f"  {name:12s} -> fit/predict_proba OK (shape={proba.shape})")
+
+    # ทดสอบประเด็น calibration: บนข้อมูล imbalanced (base rate ~0.1)
+    # - โมเดลไม่ถ่วงน้ำหนัก: ค่าเฉลี่ย predict_proba ต้องใกล้ base rate (calibrate ดี)
+    # - โมเดลถ่วงน้ำหนัก:   ค่าเฉลี่ยจะเฟ้อสูงกว่า base rate มาก (เหตุผลที่ต้อง recalibrate)
+    base_rate = y.mean()
+    p_plain = get_model("logistic").fit(X, y).predict_proba(X)[:, 1].mean()
+    p_balanced = get_model("logistic_balanced").fit(X, y).predict_proba(X)[:, 1].mean()
+    assert abs(p_plain - base_rate) < 0.03, (p_plain, base_rate)
+    assert p_balanced > 1.5 * base_rate, (p_balanced, base_rate)  # เฟ้อเกิน 1.5 เท่าของฐาน
+    print(f"  calibration check: base_rate={base_rate:.3f} | "
+          f"logistic={p_plain:.3f} (ใกล้ฐาน ✅) | logistic_balanced={p_balanced:.3f} (เฟ้อ ตามคาด ⚠️)")
 
     # ทดสอบ override + error ของชื่อที่ไม่รู้จัก
     m = get_model("lgbm", n_estimators=10)
