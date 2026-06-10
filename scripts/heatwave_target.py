@@ -45,7 +45,12 @@ def doy_window_percentile(da: xr.DataArray, q: float, window: int = 15) -> xr.Da
     for d in range(1, 367):
         offsets = {((d - 1 + k) % 366) + 1 for k in range(-window, window + 1)}
         sample = da.where(doy.isin(list(offsets)), drop=True)
-        thr = sample.quantile(q / 100.0, dim="time").drop_vars("quantile")
+        if sample.sizes.get("time", 0) == 0:
+            # ไม่มีข้อมูลในหน้าต่างของ doy นี้เลย (เช่น ส.ค.-ธ.ค. ที่ไม่ได้โหลด)
+            # -> เกณฑ์ = NaN (วันเหล่านี้ไม่มีข้อมูลให้เทียบอยู่แล้ว)
+            thr = xr.full_like(da.isel(time=0, drop=True), np.nan)
+        else:
+            thr = sample.quantile(q / 100.0, dim="time").drop_vars("quantile")
         thresholds.append(thr)
     out = xr.concat(thresholds, dim="dayofyear")
     out = out.assign_coords(dayofyear=np.arange(1, 367))

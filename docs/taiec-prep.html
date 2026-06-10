@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TAIEC 2026 — ภารกิจเข้ารอบลึก | คู่มือเตรียมสอบฉบับสมบูรณ์</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0a0d13;
+  --panel:#10141d;
+  --panel-2:#161b27;
+  --line:#232a3a;
+  --text:#dbe2ee;
+  --muted:#8b96ab;
+  --heat-1:#ff4d00;
+  --heat-2:#ff9100;
+  --heat-3:#ffc400;
+  --cool:#4dc9ff;
+  --ok:#3ddc84;
+  --bad:#ff5470;
+  --display:'Chakra Petch',sans-serif;
+  --body:'IBM Plex Sans Thai',sans-serif;
+  --mono:'IBM Plex Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:var(--ink);
+  color:var(--text);
+  font-family:var(--body);
+  line-height:1.75;
+  overflow-x:hidden;
+}
+/* ---- atmosphere ---- */
+body::before{
+  content:"";position:fixed;inset:0;z-index:-2;
+  background:
+    radial-gradient(900px 500px at 85% -10%, rgba(255,77,0,.13), transparent 60%),
+    radial-gradient(700px 450px at -10% 30%, rgba(77,201,255,.07), transparent 60%),
+    var(--ink);
+}
+body::after{
+  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(120,140,180,.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120,140,180,.05) 1px, transparent 1px);
+  background-size:48px 48px;
+  mask-image:radial-gradient(ellipse 80% 60% at 50% 0%, #000 30%, transparent 80%);
+}
+::selection{background:var(--heat-1);color:#fff}
+
+/* ---- nav ---- */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:50;
+  display:flex;align-items:center;gap:24px;
+  padding:14px 28px;
+  background:rgba(10,13,19,.82);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line);
+}
+.nav-logo{font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:.14em;color:#fff;text-decoration:none;white-space:nowrap}
+.nav-logo b{color:var(--heat-2)}
+.nav-links{display:flex;gap:4px;flex:1;overflow-x:auto;scrollbar-width:none}
+.nav-links::-webkit-scrollbar{display:none}
+.nav-links a{
+  font-family:var(--display);font-size:12px;letter-spacing:.08em;
+  color:var(--muted);text-decoration:none;padding:6px 12px;border-radius:6px;
+  white-space:nowrap;transition:.2s;
+}
+.nav-links a:hover{color:#fff;background:var(--panel-2)}
+.nav-count{font-family:var(--mono);font-size:12px;color:var(--heat-3);white-space:nowrap}
+#progress{position:fixed;top:0;left:0;height:2px;z-index:60;background:linear-gradient(90deg,var(--heat-1),var(--heat-3));width:0%}
+
+/* ---- hero ---- */
+.hero{
+  min-height:100svh;display:flex;flex-direction:column;justify-content:center;
+  padding:140px 7vw 80px;position:relative;
+}
+.kicker{
+  font-family:var(--mono);font-size:13px;color:var(--heat-2);letter-spacing:.22em;
+  display:flex;align-items:center;gap:12px;
+  animation:rise .8s .1s both;
+}
+.kicker::before{content:"";width:34px;height:1px;background:var(--heat-2)}
+.hero h1{
+  font-family:var(--display);font-weight:700;
+  font-size:clamp(2.4rem,7.2vw,5.2rem);line-height:1.08;
+  margin:22px 0 8px;color:#fff;
+  animation:rise .8s .25s both;
+}
+.hero h1 .flame{
+  background:linear-gradient(100deg,var(--heat-1),var(--heat-2) 50%,var(--heat-3));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.hero p.sub{max-width:640px;color:var(--muted);font-size:1.05rem;animation:rise .8s .4s both}
+.countdown{display:flex;gap:14px;margin:42px 0 0;flex-wrap:wrap;animation:rise .8s .55s both}
+.cd-box{
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:16px 22px;min-width:104px;text-align:center;position:relative;overflow:hidden;
+}
+.cd-box::after{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--heat-1),var(--heat-3))}
+.cd-num{font-family:var(--display);font-weight:700;font-size:2.4rem;color:#fff;font-variant-numeric:tabular-nums}
+.cd-lab{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.18em}
+.hero .target{margin-top:14px;font-family:var(--mono);font-size:13px;color:var(--muted);animation:rise .8s .65s both}
+.hero .target b{color:var(--heat-3)}
+.scroll-hint{
+  position:absolute;bottom:34px;left:7vw;font-family:var(--mono);font-size:12px;color:var(--muted);
+  letter-spacing:.2em;animation:bob 2.2s ease-in-out infinite;
+}
+@keyframes rise{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(8px)}}
+
+/* ---- sections ---- */
+section{padding:96px 7vw;position:relative}
+.mod-head{display:flex;align-items:baseline;gap:20px;margin-bottom:14px;flex-wrap:wrap}
+.mod-num{
+  font-family:var(--display);font-weight:700;font-size:clamp(2.6rem,6vw,4rem);
+  color:transparent;-webkit-text-stroke:1.5px var(--heat-2);line-height:1;
+}
+.mod-head h2{font-family:var(--display);font-weight:700;font-size:clamp(1.5rem,3.4vw,2.3rem);color:#fff}
+.mod-tag{font-family:var(--mono);font-size:12px;color:var(--cool);letter-spacing:.14em;border:1px solid rgba(77,201,255,.3);border-radius:99px;padding:3px 12px}
+.mod-intro{max-width:720px;color:var(--muted);margin-bottom:40px}
+.mod-intro b{color:var(--text)}
+
+/* reveal */
+.rv{opacity:0;transform:translateY(30px);transition:opacity .7s ease,transform .7s ease}
+.rv.on{opacity:1;transform:none}
+
+/* cards */
+.grid{display:grid;gap:18px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:26px 26px 22px;position:relative;overflow:hidden;
+  transition:transform .25s,border-color .25s;
+}
+.card:hover{transform:translateY(-3px);border-color:#33405a}
+.card h3{font-family:var(--display);font-size:1.12rem;color:#fff;margin-bottom:10px;display:flex;align-items:center;gap:10px}
+.card h3 .dot{width:8px;height:8px;border-radius:50%;background:var(--heat-2);box-shadow:0 0 12px var(--heat-2);flex:none}
+.card p{font-size:.95rem;color:var(--muted)}
+.card p b, .card li b{color:var(--text)}
+.card ul{padding-left:20px;font-size:.95rem;color:var(--muted)}
+.card li{margin:6px 0}
+.why{
+  margin-top:14px;padding:10px 14px;border-left:3px solid var(--heat-2);
+  background:rgba(255,145,0,.06);border-radius:0 8px 8px 0;
+  font-size:.88rem;color:#d8c9b4;
+}
+.why b{color:var(--heat-3)}
+code{
+  font-family:var(--mono);font-size:.85em;color:var(--heat-3);
+  background:rgba(255,145,0,.08);padding:2px 7px;border-radius:5px;
+}
+pre{
+  background:#0c0f16;border:1px solid var(--line);border-radius:10px;
+  padding:18px 20px;overflow-x:auto;margin:14px 0;
+  font-family:var(--mono);font-size:.84rem;line-height:1.7;color:#c7d2e6;
+}
+pre code{background:none;padding:0;color:inherit}
+pre .cm{color:#5b6b85}
+pre .kw{color:var(--cool)}
+pre .st{color:var(--ok)}
+pre .fn{color:var(--heat-3)}
+
+/* formula block */
+.formula{
+  font-family:var(--mono);text-align:center;font-size:1.05rem;color:#fff;
+  background:var(--panel-2);border:1px solid var(--line);border-radius:10px;
+  padding:16px;margin:14px 0;letter-spacing:.03em;
+}
+.formula small{display:block;color:var(--muted);font-family:var(--body);font-size:.82rem;letter-spacing:0;margin-top:6px}
+
+/* timeline */
+.timeline{position:relative;margin:30px 0 0;padding-left:34px}
+.timeline::before{content:"";position:absolute;left:9px;top:6px;bottom:6px;width:2px;background:linear-gradient(var(--heat-1),var(--heat-3),var(--cool))}
+.tl-item{position:relative;padding:0 0 30px}
+.tl-item::before{
+  content:"";position:absolute;left:-32px;top:7px;width:12px;height:12px;border-radius:50%;
+  background:var(--ink);border:3px solid var(--heat-2);
+}
+.tl-item.big::before{background:var(--heat-2);box-shadow:0 0 16px var(--heat-1)}
+.tl-date{font-family:var(--mono);font-size:12px;color:var(--heat-3);letter-spacing:.12em}
+.tl-item h4{font-family:var(--display);color:#fff;font-size:1.05rem;margin:2px 0}
+.tl-item p{color:var(--muted);font-size:.92rem;max-width:560px}
+
+/* table */
+.tbl{width:100%;border-collapse:collapse;margin:14px 0;font-size:.92rem}
+.tbl th{font-family:var(--display);font-size:.82rem;letter-spacing:.06em;color:var(--heat-3);text-align:left;padding:10px 14px;border-bottom:2px solid var(--line)}
+.tbl td{padding:10px 14px;border-bottom:1px solid var(--line);color:var(--muted)}
+.tbl td:first-child{color:var(--text);font-weight:500}
+.tbl tr:hover td{background:rgba(255,145,0,.04)}
+
+/* quiz */
+.quiz{
+  margin-top:42px;background:linear-gradient(180deg,var(--panel-2),var(--panel));
+  border:1px solid var(--line);border-radius:16px;padding:30px;
+}
+.quiz-tag{font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--cool);margin-bottom:18px;display:flex;align-items:center;gap:10px}
+.quiz-tag::after{content:"";flex:1;height:1px;background:var(--line)}
+.q{margin-bottom:26px}
+.q:last-child{margin-bottom:0}
+.q-text{font-weight:600;color:#fff;margin-bottom:12px}
+.q-opts{display:grid;gap:8px}
+.q-opt{
+  text-align:left;font-family:var(--body);font-size:.93rem;color:var(--text);
+  background:var(--panel);border:1px solid var(--line);border-radius:9px;
+  padding:11px 16px;cursor:pointer;transition:.2s;
+}
+.q-opt:hover{border-color:var(--heat-2);transform:translateX(4px)}
+.q-opt.correct{border-color:var(--ok);background:rgba(61,220,132,.1);color:var(--ok)}
+.q-opt.wrong{border-color:var(--bad);background:rgba(255,84,112,.08);color:var(--bad)}
+.q-opt:disabled{cursor:default}
+.q-opt:disabled:hover{transform:none}
+.q-exp{
+  display:none;margin-top:12px;padding:12px 16px;border-radius:9px;
+  background:rgba(77,201,255,.06);border:1px solid rgba(77,201,255,.25);
+  font-size:.88rem;color:#bcd9ea;
+}
+.q-exp.show{display:block;animation:rise .4s both}
+.q-exp b{color:var(--cool)}
+
+/* gradient descent demo */
+.demo{
+  background:var(--panel);border:1px solid var(--line);border-radius:16px;
+  padding:28px;margin-top:36px;
+}
+.demo h3{font-family:var(--display);color:#fff;margin-bottom:6px}
+.demo p.d-sub{color:var(--muted);font-size:.9rem;margin-bottom:18px}
+#gdCanvas{width:100%;max-width:680px;display:block;background:#0c0f16;border:1px solid var(--line);border-radius:10px}
+.demo-ctrl{display:flex;gap:18px;align-items:center;margin-top:16px;flex-wrap:wrap}
+.demo-ctrl label{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.demo-ctrl input[type=range]{accent-color:var(--heat-2);width:160px}
+.btn{
+  font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.1em;
+  background:linear-gradient(100deg,var(--heat-1),var(--heat-2));color:#fff;
+  border:none;border-radius:8px;padding:10px 22px;cursor:pointer;transition:.2s;
+}
+.btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(255,77,0,.35)}
+.btn.ghost{background:none;border:1px solid var(--line);color:var(--muted)}
+.btn.ghost:hover{color:#fff;border-color:var(--muted);box-shadow:none}
+#gdLog{font-family:var(--mono);font-size:12px;color:var(--heat-3);margin-top:10px;min-height:18px}
+
+/* case study */
+.case{
+  margin-top:36px;border:1px solid rgba(255,145,0,.35);border-radius:16px;
+  background:
+    radial-gradient(500px 200px at 90% 0%, rgba(255,77,0,.12), transparent 70%),
+    var(--panel);
+  padding:30px;
+}
+.case .quiz-tag{color:var(--heat-2)}
+.case h3{font-family:var(--display);color:#fff;font-size:1.25rem;margin-bottom:10px}
+.case p{color:var(--muted);font-size:.95rem;max-width:760px}
+.case ol{padding-left:22px;color:var(--muted);font-size:.95rem;margin-top:10px}
+.case li{margin:8px 0}
+.case li b{color:var(--heat-3)}
+
+/* checklist */
+.check{display:grid;gap:10px;margin-top:20px}
+.check label{
+  display:flex;gap:12px;align-items:flex-start;background:var(--panel);
+  border:1px solid var(--line);border-radius:10px;padding:13px 16px;cursor:pointer;
+  font-size:.93rem;color:var(--muted);transition:.2s;
+}
+.check label:hover{border-color:#33405a}
+.check input{accent-color:var(--heat-2);margin-top:4px;flex:none}
+.check input:checked + span{color:var(--ok);text-decoration:line-through}
+
+footer{
+  padding:60px 7vw 40px;border-top:1px solid var(--line);
+  display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;
+  font-family:var(--mono);font-size:12px;color:var(--muted);
+}
+footer b{color:var(--heat-2)}
+
+@media (max-width:640px){
+  nav{padding:12px 16px;gap:12px}
+  .nav-count{display:none}
+  section{padding:72px 6vw}
+  .cd-box{min-width:78px;padding:12px 14px}
+  .cd-num{font-size:1.7rem}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+
+<nav>
+  <a class="nav-logo" href="#top">TAIEC<b>//PREP</b></a>
+  <div class="nav-links">
+    <a href="#roadmap">เส้นทาง</a>
+    <a href="#math">01 คณิต</a>
+    <a href="#code">02 โค้ด</a>
+    <a href="#ml">03 AI/ML</a>
+    <a href="#system">04 System Design</a>
+    <a href="#arena">05 สนามจริง</a>
+  </div>
+  <span class="nav-count" id="navCount">--:--:--</span>
+</nav>
+
+<!-- ================= HERO ================= -->
+<header class="hero" id="top">
+  <div class="kicker">THAILAND AI ENGINEERING CHAMPIONSHIP 2026</div>
+  <h1>ภารกิจ: เข้ารอบลึก<br><span class="flame">ให้ลึกที่สุด</span></h1>
+  <p class="sub">คู่มือเตรียมสอบฉบับสมบูรณ์ — ครอบคลุมทั้ง 5 แกนที่ CMKL ใช้วัด:
+  คณิตศาสตร์สำหรับ AI · Programming &amp; Problem-Solving · AI Fundamentals ·
+  AI System Design · Mini Project Execution</p>
+  <div class="countdown" id="countdown">
+    <div class="cd-box"><div class="cd-num" id="cdD">--</div><div class="cd-lab">วัน</div></div>
+    <div class="cd-box"><div class="cd-num" id="cdH">--</div><div class="cd-lab">ชั่วโมง</div></div>
+    <div class="cd-box"><div class="cd-num" id="cdM">--</div><div class="cd-lab">นาที</div></div>
+    <div class="cd-box"><div class="cd-num" id="cdS">--</div><div class="cd-lab">วินาที</div></div>
+  </div>
+  <div class="target">เป้าหมาย: <b>สอบรอบ 1 — เสาร์ 25 ก.ค. 2026</b> (ออนไลน์ 90 นาที)</div>
+  <div class="scroll-hint">SCROLL ▼</div>
+</header>
+
+<!-- ================= ROADMAP ================= -->
+<section id="roadmap">
+  <div class="mod-head rv"><span class="mod-num">00</span><h2>เส้นทางสู่เหรียญ</h2><span class="mod-tag">ROADMAP</span></div>
+  <p class="mod-intro rv">รู้สนามก่อนลงสนาม — การแข่งมี 2 รอบ คนละทักษะกัน
+  <b>รอบ 1 วัดความรู้ (สอบ 90 นาที)</b> · <b>รอบ 2 วัดการลงมือทำ (โปรเจกต์สด onsite)</b></p>
+  <div class="timeline rv">
+    <div class="tl-item"><div class="tl-date">ตอนนี้ → 24 ก.ค.</div><h4>ช่วงติวเข้ม ~6 สัปดาห์</h4><p>เก็บเนื้อหาโมดูล 01–03 ในเว็บนี้ + ฝึกโจทย์ + mock exam 90 นาที อย่างน้อย 2 ครั้ง</p></div>
+    <div class="tl-item big"><div class="tl-date">25 ก.ค. 2026</div><h4>รอบ 1 — Online Qualifier (90 นาที)</h4><p>Mathematics for AI · Programming Basics · AI Fundamentals — ข้อสอบปรนัย/ตอบสั้น ความเร็วและความแม่นคือทุกอย่าง</p></div>
+    <div class="tl-item"><div class="tl-date">1 ส.ค. 2026</div><h4>ประกาศผลรอบ 1</h4><p>ได้ Verified Score ใช้ใส่พอร์ตได้ทันที (TCAS70 พอร์ตเปิด 15 ส.ค.)</p></div>
+    <div class="tl-item"><div class="tl-date">8 / 15 / 22 / 29 ส.ค.</div><h4>Bootcamp ผู้เข้ารอบ (ทุกเสาร์)</h4><p>ติวโดยอาจารย์ CMKL + Google Research — ตั้งใจเก็บให้หมด นี่คือสัญญาณว่าโจทย์รอบชิงจะหน้าตาแบบไหน</p></div>
+    <div class="tl-item big"><div class="tl-date">5–6 ก.ย. 2026</div><h4>รอบชิง — Onsite ที่ CMKL</h4><p>AI System Design · Advanced Coding · Mini Project สด 2 วัน — โมดูล 04–05 คืออาวุธของรอบนี้</p></div>
+  </div>
+</section>
+
+<!-- ================= MODULE 1 : MATH ================= -->
+<section id="math">
+  <div class="mod-head rv"><span class="mod-num">01</span><h2>คณิตศาสตร์สำหรับ AI</h2><span class="mod-tag">ROUND 1</span></div>
+  <p class="mod-intro rv">AI ทั้งหมดสร้างจากคณิต 4 ก้อน: <b>ฟังก์ชัน · เมทริกซ์ · ความน่าจะเป็น · ความชัน</b>
+  ถ้าเข้าใจว่าแต่ละก้อน "ไปโผล่ตรงไหนใน AI" จะจำได้โดยไม่ต้องท่อง</p>
+
+  <div class="grid g2">
+    <div class="card rv">
+      <h3><span class="dot"></span>สมการเชิงเส้น &amp; ฟังก์ชัน</h3>
+      <p>ฟังก์ชันเชิงเส้น <code>y = wx + b</code> คือโมเดล AI ที่เรียบง่ายที่สุด —
+      <b>w (weight)</b> คือความชัน บอกว่า x มีผลต่อ y แค่ไหน, <b>b (bias)</b> คือจุดตัดแกน</p>
+      <div class="formula">ŷ = w₁x₁ + w₂x₂ + ... + wₙxₙ + b<small>Linear Regression = สมการเส้นตรงหลายตัวแปร — "การเรียนรู้" คือการหา w, b ที่ทำให้ทายแม่นสุด</small></div>
+      <ul>
+        <li>ต้องคล่อง: แก้ระบบสมการ 2–3 ตัวแปร, หาความชันจาก 2 จุด</li>
+        <li>ฟังก์ชันไม่เชิงเส้นที่ AI ใช้: <code>sigmoid</code> บีบค่าให้อยู่ 0–1 (กลายเป็นความน่าจะเป็น), <code>ReLU = max(0, x)</code></li>
+        <li>composite function f(g(x)) = หัวใจของ neural network หลายชั้น</li>
+      </ul>
+      <div class="why"><b>ไปโผล่ที่:</b> ทุกโมเดล — neural network 1 neuron ก็คือ wx + b แล้วครอบด้วยฟังก์ชันไม่เชิงเส้น</div>
+    </div>
+
+    <div class="card rv">
+      <h3><span class="dot"></span>เมทริกซ์ &amp; เวกเตอร์</h3>
+      <p>เวกเตอร์ = ลิสต์ตัวเลข 1 แถว (ข้อมูล 1 ตัวอย่าง) · เมทริกซ์ = ตาราง (ข้อมูลทั้งชุด หรือ weight ทั้งชั้นของ neural net)</p>
+      <div class="formula">(A·B)ᵢⱼ = Σₖ Aᵢₖ Bₖⱼ<small>คูณเมทริกซ์: แถวของ A จับคู่คอลัมน์ของ B — คูณทีละคู่แล้วบวก (dot product)</small></div>
+      <ul>
+        <li><b>เงื่อนไขคูณได้:</b> (m×n)·(n×p) → ได้ (m×p) — ตัวในต้องเท่ากัน</li>
+        <li><b>สำคัญ:</b> A·B ≠ B·A (ไม่สลับที่!) — ออกสอบบ่อย</li>
+        <li>Identity matrix I: คูณอะไรได้ตัวเดิม (เหมือนเลข 1)</li>
+        <li>Transpose Aᵀ: พลิกแถวเป็นคอลัมน์</li>
+        <li>Dot product ของ 2 เวกเตอร์ = ตัววัด "ความคล้าย" (similarity)</li>
+      </ul>
+      <div class="why"><b>ไปโผล่ที่:</b> 1 ชั้นของ neural network = การคูณเมทริกซ์ 1 ครั้ง (output = W·x + b) · ระบบแนะนำ/ search ใช้ dot product วัดความคล้าย</div>
+    </div>
+
+    <div class="card rv">
+      <h3><span class="dot"></span>ความน่าจะเป็น &amp; สถิติ</h3>
+      <p>AI สมัยใหม่ตอบเป็น "ความน่าจะเป็น" ไม่ใช่ "ใช่/ไม่ใช่" — เพราะโลกจริงไม่แน่นอน</p>
+      <div class="formula">P(A|B) = P(B|A)·P(A) / P(B)<small>Bayes' theorem — กลับทิศเงื่อนไข: รู้ P(อาการ|โรค) → หา P(โรค|อาการ)</small></div>
+      <ul>
+        <li>P(A และ B) = P(A)·P(B) <b>เมื่ออิสระต่อกันเท่านั้น</b></li>
+        <li>P(A หรือ B) = P(A) + P(B) − P(A และ B)</li>
+        <li>Conditional probability P(A|B) = P(A∩B)/P(B)</li>
+        <li>ค่าคาดหวัง E[X] = Σ xᵢ·P(xᵢ) — "ค่าเฉลี่ยถ่วงด้วยโอกาส"</li>
+        <li>mean / median / SD — SD บอกการกระจาย, median ทนค่า outlier</li>
+      </ul>
+      <div class="why"><b>ไปโผล่ที่:</b> spam filter (Naive Bayes), LLM ทายคำถัดไปด้วยการแจกแจงความน่าจะเป็น, โมเดลพยากรณ์ heatwave ก็ตอบเป็น P(เกิด heatwave)</div>
+    </div>
+
+    <div class="card rv">
+      <h3><span class="dot"></span>ความชัน → Gradient Descent</h3>
+      <p>อนุพันธ์ (derivative) = ความชันของฟังก์ชัน ณ จุดหนึ่ง — บอกว่า "ถ้าขยับ x นิดเดียว y เปลี่ยนเท่าไหร่และไปทางไหน"</p>
+      <div class="formula">w ← w − α · ∂L/∂w<small>กฎอัปเดตของ gradient descent: เดินสวนทางความชันของ Loss ทีละก้าวขนาด α (learning rate)</small></div>
+      <ul>
+        <li>Loss function L = ตัววัด "ทายพลาดแค่ไหน" เช่น MSE = ค่าเฉลี่ยของ (จริง−ทาย)²</li>
+        <li>ความชันเป็นบวก → ลด w · ความชันเป็นลบ → เพิ่ม w → เดินลงเขาเสมอ</li>
+        <li>α ใหญ่ไป = กระโดดข้ามก้นเหว · α เล็กไป = เดินช้ามาก (ลองเล่นใน demo โมดูล 03)</li>
+        <li>จุดต่ำสุด = ความชัน 0 → โมเดล "เรียนรู้เสร็จ"</li>
+      </ul>
+      <div class="why"><b>ไปโผล่ที่:</b> การ train ทุกโมเดลตั้งแต่ linear regression ยัน GPT คือ gradient descent บน loss ทั้งนั้น</div>
+    </div>
+  </div>
+
+  <div class="quiz rv">
+    <div class="quiz-tag">QUIZ // ลองของ — โมดูล 01</div>
+    <div class="q">
+      <div class="q-text">Q1 — เมทริกซ์ A ขนาด 2×3 คูณกับ B ขนาด 3×4 ผลลัพธ์มีขนาดเท่าไร?</div>
+      <div class="q-opts">
+        <button class="q-opt">3×3</button>
+        <button class="q-opt" data-ok>2×4</button>
+        <button class="q-opt">4×2</button>
+        <button class="q-opt">คูณไม่ได้</button>
+      </div>
+      <div class="q-exp"><b>เฉลย: 2×4</b> — (m×n)·(n×p) = (m×p) ตัวใน (3=3) ต้องเท่ากันถึงคูณได้ แล้วเอาตัวนอกมาเป็นขนาดผลลัพธ์</div>
+    </div>
+    <div class="q">
+      <div class="q-text">Q2 — โยนลูกเต๋า 2 ลูก ความน่าจะเป็นที่ผลรวม = 7 คือ?</div>
+      <div class="q-opts">
+        <button class="q-opt">1/12</button>
+        <button class="q-opt">1/7</button>
+        <button class="q-opt" data-ok>1/6</button>
+        <button class="q-opt">7/36</button>
+      </div>
+      <div class="q-exp"><b>เฉลย: 1/6</b> — ผลลัพธ์ทั้งหมด 36 แบบ, รวมเป็น 7 ได้ 6 แบบ (1+6, 2+5, 3+4, 4+3, 5+2, 6+1) → 6/36 = 1/6</div>
+    </div>
+    <div class="q">
+      <div class="q-text">Q3 — ถ้าความชันของ Loss เทียบกับ w เป็นค่า "ลบ" gradient descent จะทำอะไร?</div>
+      <div class="q-opts">
+        <button class="q-opt">ลดค่า w</button>
+        <button class="q-opt" data-ok>เพิ่มค่า w</button>
+        <button class="q-opt">หยุด train</button>
+        <button class="q-opt">เพิ่ม learning rate</button>
+      </div>
+      <div class="q-exp"><b>เฉลย: เพิ่ม w</b> — กฎคือ w ← w − α·(ความชัน) ความชันลบ → ลบด้วยค่าลบ = บวก → w เพิ่มขึ้น เดินลงเขาเข้าหาจุดต่ำสุด</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= MODULE 2 : PROGRAMMING ================= -->
+<section id="code">
+  <div class="mod-head rv"><span class="mod-num">02</span><h2>Programming &amp; Problem-Solving</h2><span class="mod-tag">ROUND 1 + 2</span></div>
+  <p class="mod-intro rv">ภาษาหลักของสนามนี้คือ <b>Python</b> — รอบ 1 วัดความเข้าใจโค้ดและอัลกอริทึม
+  รอบ 2 วัดว่าเขียนจริงได้เร็วแค่ไหน</p>
+
+  <div class="grid g2">
+    <div class="card rv">
+      <h3><span class="dot"></span>Python ที่ต้องคล่องเหมือนหายใจ</h3>
+      <ul>
+        <li><b>โครงสร้างข้อมูล 4 ตัว:</b> <code>list</code> (ลำดับ, แก้ได้) · <code>tuple</code> (แก้ไม่ได้) · <code>dict</code> (key→value, ค้นเร็ว O(1)) · <code>set</code> (ไม่ซ้ำ, เช็คสมาชิกเร็ว)</li>
+        <li>List comprehension: <code>[x**2 for x in range(10) if x % 2 == 0]</code></li>
+        <li>Slicing: <code>a[1:4]</code>, <code>a[::-1]</code> (กลับลำดับ)</li>
+        <li>ฟังก์ชัน: default args, <code>*args</code>, return หลายค่า</li>
+        <li>อ่านโค้ดแล้ว "ไล่ค่า" ในหัวได้ — ข้อสอบชอบถาม output</li>
+      </ul>
+      <pre><code><span class="cm"># ข้อสอบคลาสสิก: ไล่ค่าให้ทัน</span>
+<span class="kw">def</span> <span class="fn">f</span>(n):
+    <span class="kw">return</span> n * f(n-1) <span class="kw">if</span> n > 1 <span class="kw">else</span> 1
+<span class="fn">print</span>(f(5))  <span class="cm"># 120 — recursion หา factorial</span></code></pre>
+    </div>
+
+    <div class="card rv">
+      <h3><span class="dot"></span>OOP — Object-Oriented Programming</h3>
+      <p>แนวคิด 4 เสา ที่ออกสอบแน่:</p>
+      <ul>
+        <li><b>Class/Object:</b> class = พิมพ์เขียว, object = ของจริงที่สร้างจากพิมพ์เขียว</li>
+        <li><b>Encapsulation:</b> ซ่อนข้อมูลภายใน เข้าถึงผ่าน method</li>
+        <li><b>Inheritance:</b> class ลูกได้ความสามารถ class แม่ (<code>class Dog(Animal)</code>)</li>
+        <li><b>Polymorphism:</b> method ชื่อเดียวกัน ทำงานต่างกันตาม class (override)</li>
+      </ul>
+      <pre><code><span class="kw">class</span> <span class="fn">Model</span>:
+    <span class="kw">def</span> <span class="fn">predict</span>(self, x): <span class="kw">return</span> <span class="st">"base"</span>
+
+<span class="kw">class</span> <span class="fn">HeatwaveModel</span>(Model):   <span class="cm"># inheritance</span>
+    <span class="kw">def</span> <span class="fn">predict</span>(self, x):       <span class="cm"># polymorphism</span>
+        <span class="kw">return</span> <span class="st">"P(heatwave) = 0.73"</span></code></pre>
+      <div class="why"><b>เชื่อมโยง:</b> library ML จริง (scikit-learn) ใช้ OOP เป๊ะ ๆ — ทุกโมเดลมี <code>.fit()</code> / <code>.predict()</code> เหมือนกัน (polymorphism ของจริง)</div>
+    </div>
+
+    <div class="card rv">
+      <h3><span class="dot"></span>อัลกอริทึม &amp; Big-O</h3>
+      <p>Big-O = "เวลาทำงานโตเร็วแค่ไหนเมื่อข้อมูลใหญ่ขึ้น" — เรียงจากเร็วไปช้า:</p>
+      <table class="tbl">
+        <tr><th>Big-O</th><th>ตัวอย่าง</th><th>n = 1 ล้าน</th></tr>
+        <tr><td>O(1)</td><td>ดึงจาก dict / array index</td><td>ทันที</td></tr>
+        <tr><td>O(log n)</td><td>binary search (ข้อมูลเรียงแล้ว)</td><td>~20 ครั้ง</td></tr>
+        <tr><td>O(n)</td><td>วนลูปครั้งเดียว / linear search</td><td>1 ล้านครั้ง</td></tr>
+        <tr><td>O(n log n)</td><td>sort ที่ดี (merge sort, Timsort)</td><td>~20 ล้าน</td></tr>
+        <tr><td>O(n²)</td><td>ลูปซ้อนลูป / bubble sort</td><td>1 ล้านล้าน 💀</td></tr>
+      </table>
+      <div class="why"><b>กับดักข้อสอบ:</b> ลูปซ้อน 2 ชั้นบน n เดียวกัน = O(n²) · binary search ใช้ได้เฉพาะข้อมูลที่ "เรียงแล้ว" เท่านั้น</div>
+    </div>
+
+    <div class="card rv">
+      <h3><span class="dot"></span>สูตรแก้โจทย์ Problem-Solving</h3>
+      <p>เจอโจทย์ที่ไม่เคยเห็น ใช้ลำดับนี้เสมอ:</p>
+      <ul>
+        <li><b>1. แปลงโจทย์</b> → input คืออะไร output คืออะไร เขียนตัวอย่างเอง 1 เคส</li>
+        <li><b>2. เคสมุม (edge cases)</b> → ลิสต์ว่าง? ค่าติดลบ? ข้อมูลซ้ำ? n=0?</li>
+        <li><b>3. brute force ก่อน</b> → วิธีโง่ที่สุดที่ถูกต้อง แล้วค่อยถามว่าเร็วขึ้นได้ไหม</li>
+        <li><b>4. รู้จัก pattern:</b> two pointers, hash map (dict) นับความถี่, sliding window, recursion</li>
+        <li><b>5. ไล่โค้ดด้วยมือ</b> กับตัวอย่างก่อนส่ง</li>
+      </ul>
+      <div class="why"><b>ฝึกที่:</b> HackerRank (Python + 10 Days of Statistics), LeetCode Easy 20–30 ข้อ, โจทย์ Project Euler ข้อต้น ๆ — วันละ 2 ข้อพอ สม่ำเสมอชนะอัดครั้งเดียว</div>
+    </div>
+  </div>
+
+  <div class="quiz rv">
+    <div class="quiz-tag">QUIZ // ลองของ — โมดูล 02</div>
+    <div class="q">
+      <div class="q-text">Q1 — <code>a = [1,2,3,4,5]; print(a[1:4:2])</code> ได้อะไร?</div>
+      <div class="q-opts">
+        <button class="q-opt">[2, 3, 4]</button>
+        <button class="q-opt" data-ok>[2, 4]</button>
+        <button class="q-opt">[1, 3]</button>
+        <button class="q-opt">[2, 4, 5]</button>
+      </div>
+      <div class="q-exp"><b>เฉลย: [2, 4]</b> — slice [start:stop:step] = เริ่ม index 1, หยุดก่อน index 4, กระโดดทีละ 2 → index 1 และ 3 → ค่า 2 และ 4</div>
+    </div>
+    <div class="q">
+      <div class="q-text">Q2 — ต้องเช็คว่า "คำนี้เคยเจอหรือยัง" ในข้อมูลล้านคำ ควรใช้โครงสร้างไหนให้เร็วสุด?</div>
+      <div class="q-opts">
+        <button class="q-opt">list</button>
+        <button class="q-opt">tuple</button>
+        <button class="q-opt" data-ok>set</button>
+        <button class="q-opt">เรียง list แล้ว binary search</button>
+      </div>
+      <div class="q-exp"><b>เฉลย: set</b> — เช็คสมาชิกใน set เฉลี่ย O(1) ส่วน list ต้องไล่ O(n), binary search ก็ O(log n) แถมต้องเรียงก่อน</div>
+    </div>
+    <div class="q">
+      <div class="q-text">Q3 — ลูปซ้อน 2 ชั้น ชั้นนอกวน n รอบ ชั้นในวน n รอบ ความซับซ้อนคือ?</div>
+      <div class="q-opts">
+        <button class="q-opt">O(n)</button>
+        <button class="q-opt">O(2n)</button>
+        <button class="q-opt" data-ok>O(n²)</button>
+        <button class="q-opt">O(n log n)</button>
+      </div>
+      <div class="q-exp"><b>เฉลย: O(n²)</b> — ทุกรอบของชั้นนอก ชั้นในวนเต็ม n รอบ → n×n ครั้ง (O(2n) ไม่มีอยู่จริง — ค่าคงที่ตัดทิ้ง เหลือ O(n))</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= MODULE 3 : AI/ML ================= -->
+<section id="ml">
+  <div class="mod-head rv"><span class="mod-num">03</span><h2>AI Fundamentals</h2><span class="mod-tag">ROUND 1 หัวใจหลัก</span></div>
+  <p class="mod-intro rv">โครงใหญ่: <b>AI ⊃ Machine Learning ⊃ Deep Learning</b> —
+  AI คือเป้าหมาย (เครื่องฉลาด), ML คือวิธี (เรียนจากข้อมูลแทนการเขียนกฎ), DL คือ ML ที่ใช้ neural network หลายชั้น</p>
+
+  <div class="grid g2">
+    <div class="card rv">
+      <h3><span class="dot"></span>3 โหมดการเรียนรู้</h3>
+      <table class="tbl">
+        <tr><th>โหมด</th><th>ข้อมูล</th><th>ตัวอย่าง</th></tr>
+        <tr><td>Supervised</td><td>มีเฉลย (label)</td><td>ทายราคาบ้าน, จำแนกสแปม</td></tr>
+        <tr><td>Unsupervised</td><td>ไม่มีเฉลย</td><td>จัดกลุ่มลูกค้า (clustering)</td></tr>
+        <tr><td>Reinforcement</td><td>เรียนจาก reward</td><td>AI เล่นเกม, หุ่นยนต์</td></tr>
+      </table>
+      <p>Supervised แบ่งย่อยอีก 2: <b>Regression</b> (ทายตัวเลข เช่น อุณหภูมิ) vs
+      <b>Classification</b> (ทายหมวด เช่น heatwave / ไม่ heatwave)</p>
+      <div class="why"><b>กับดักข้อสอบ:</b> "ทายความน่าจะเป็นของเหตุการณ์" = classification (logistic regression) ไม่ใช่ regression แม้ชื่อจะมีคำว่า regression!</div>
+    </div>
+
+    <div class="card rv">
+      <h3><span class="dot"></span>โมเดลพื้นฐานที่ต้องรู้จัก</h3>
+      <ul>
+        <li><b>Linear Regression</b> — ลากเส้นตรงให้ fit จุด, ทายตัวเลข</li>
+        <li><b>Logistic Regression</b> — เส้นตรงครอบ sigmoid → ได้ความน่าจะเป็น 0–1</li>
+        <li><b>Decision Tree</b> — ต้นไม้คำถาม if/else, อ่านง่าย แต่ overfit ง่าย</li>
+        <li><b>Random Forest / Gradient Boosting</b> — รวมต้นไม้หลายต้นโหวตกัน แม่นขึ้นมาก</li>
+        <li><b>k-NN</b> — ดูเพื่อนบ้าน k ตัวที่ใกล้สุดแล้วโหวต</li>
+        <li><b>k-Means</b> — จัดกลุ่ม (unsupervised) จับจุดเข้า k กลุ่มตามระยะ</li>
+        <li><b>Neural Network</b> — ชั้นของ (เมทริกซ์คูณ + ฟังก์ชันไม่เชิงเส้น) ซ้อนกัน</li>
+      </ul>
+    </div>
+
+    <div class="card rv">
+      <h3><span class="dot"></span>Overfitting — ศัตรูหมายเลขหนึ่ง</h3>
+      <p><b>Overfit</b> = ท่องข้อสอบเก่าจนจำเฉลยได้ แต่ทำข้อสอบใหม่ไม่ได้
+      (คะแนน train สูง, test ต่ำ) · <b>Underfit</b> = โมเดลง่ายไป ทำได้แย่ทั้งคู่</p>
+      <ul>
+        <li><b>ทำไมต้อง split:</b> train (เรียน) / validation (จูน) / test (วัดจริง ห้ามแตะจนจบ)</li>
+        <li><b>Cross-validation:</b> แบ่ง k ส่วน ผลัดกันเป็น test → ค่าเฉลี่ยน่าเชื่อกว่า</li>
+        <li><b>แก้ overfit:</b> เพิ่มข้อมูล, ลดความซับซ้อนโมเดล, regularization (ลงโทษ w ที่ใหญ่), early stopping</li>
+        <li><b>ข้อมูล time series ห้าม split สุ่ม!</b> ต้องตัดตามเวลา (train อดีต → test อนาคต) ไม่งั้นโมเดล "แอบเห็นอนาคต" = data leakage</li>
+      </ul>
+      <div class="why"><b>ออกสอบชัวร์:</b> ให้กราฟ train loss ลด แต่ validation loss เริ่มเด้งขึ้น → จุดนั้นคือเริ่ม overfit ควรหยุด (early stopping)</div>
+    </div>
+
+    <div class="card rv">
+      <h3><span class="dot"></span>วัดผลโมเดล — Metrics</h3>
+      <p>Confusion matrix ของ classification (ทาย heatwave):</p>
+      <table class="tbl">
+        <tr><th></th><th>ทาย: เกิด</th><th>ทาย: ไม่เกิด</th></tr>
+        <tr><td>จริง: เกิด</td><td>TP ✓</td><td>FN ✗ (พลาดเตือน!)</td></tr>
+        <tr><td>จริง: ไม่เกิด</td><td>FP ✗ (เตือนหลอก)</td><td>TN ✓</td></tr>
+      </table>
+      <ul>
+        <li><b>Accuracy</b> = (TP+TN)/ทั้งหมด — <b>หลอกได้ถ้าข้อมูล imbalanced</b>: heatwave เกิดแค่ 5% ของวัน โมเดลทาย "ไม่เกิด" ตลอดก็ accuracy 95% แต่ไร้ค่า</li>
+        <li><b>Precision</b> = TP/(TP+FP) — ที่เตือนไป จริงกี่ส่วน</li>
+        <li><b>Recall</b> = TP/(TP+FN) — เหตุการณ์จริง จับได้กี่ส่วน</li>
+        <li><b>F1</b> = ค่าเฉลี่ยฮาร์มอนิกของ precision กับ recall</li>
+        <li><b>ROC-AUC</b> = วัดการแยกชั้นทุก threshold · <b>Brier score</b> = วัดความแม่นของ "ความน่าจะเป็น" ที่ทาย</li>
+      </ul>
+    </div>
+
+    <div class="card rv">
+      <h3><span class="dot"></span>Neural Network ใน 60 วินาที</h3>
+      <ul>
+        <li>1 neuron: รับ input หลายตัว → ถ่วงน้ำหนัก w → บวก b → ผ่าน activation (ReLU/sigmoid)</li>
+        <li>หลาย neuron เรียงเป็น <b>layer</b>, หลาย layer ซ้อน = <b>deep</b> learning</li>
+        <li><b>Forward pass:</b> ข้อมูลไหลไปข้างหน้า → ได้คำทาย</li>
+        <li><b>Backpropagation:</b> คำนวณว่าแต่ละ w มีส่วนทำให้พลาดเท่าไร (chain rule) → อัปเดตด้วย gradient descent</li>
+        <li>ชนิดสำคัญ: <b>CNN</b> (ภาพ — กรองหา pattern เฉพาะที่), <b>RNN</b> (ลำดับ), <b>Transformer</b> (ภาษา — กลไก attention)</li>
+      </ul>
+    </div>
+
+    <div class="card rv">
+      <h3><span class="dot"></span>Generative AI — ของใหม่ที่สอบแน่</h3>
+      <ul>
+        <li><b>LLM</b> (เช่น GPT, Claude): โมเดล transformer ที่เรียนจากข้อความมหาศาล หลักการคือ "ทายโทเค็นถัดไป" ซ้ำ ๆ</li>
+        <li><b>Token</b> = หน่วยย่อยของข้อความ (คำ/ส่วนของคำ) · <b>Embedding</b> = แปลงคำเป็นเวกเตอร์ตัวเลขที่คำความหมายใกล้กันอยู่ใกล้กัน</li>
+        <li><b>Attention</b> = กลไกให้โมเดล "เพ่ง" คำที่เกี่ยวข้องกันแม้อยู่ไกลกันในประโยค</li>
+        <li><b>Hallucination</b> = โมเดลตอบมั่นใจแต่ผิด — เพราะมันทายคำที่ "น่าจะมา" ไม่ใช่ค้นความจริง</li>
+        <li><b>Fine-tuning</b> = เอาโมเดลที่ train แล้วมาเรียนต่อกับข้อมูลเฉพาะทาง · <b>RAG</b> = ให้โมเดลค้นเอกสารก่อนตอบ ลด hallucination</li>
+        <li><b>Diffusion model</b> (สร้างภาพ): เรียนวิธี "ลบ noise" ทีละขั้นจนได้ภาพ</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- gradient descent demo -->
+  <div class="demo rv">
+    <h3>🎮 LAB: เดินลงเขาด้วย Gradient Descent</h3>
+    <p class="d-sub">ลูกบอลคือค่า w ของโมเดล เส้นโค้งคือ Loss — กด RUN แล้วลองปรับ learning rate (α) ดูว่าเกิดอะไรขึ้นเมื่อ α เล็กไป / ใหญ่ไป</p>
+    <canvas id="gdCanvas" width="680" height="320"></canvas>
+    <div class="demo-ctrl">
+      <button class="btn" id="gdRun">RUN ▸</button>
+      <button class="btn ghost" id="gdReset">RESET</button>
+      <label>learning rate α: <span id="gdLrVal">0.10</span></label>
+      <input type="range" id="gdLr" min="0.01" max="1.05" step="0.01" value="0.10">
+    </div>
+    <div id="gdLog"></div>
+  </div>
+
+  <div class="quiz rv">
+    <div class="quiz-tag">QUIZ // ลองของ — โมดูล 03</div>
+    <div class="q">
+      <div class="q-text">Q1 — ข้อมูล heatwave เกิดแค่ 5% ของวันทั้งหมด ทำไม accuracy ถึงเป็น metric ที่แย่?</div>
+      <div class="q-opts">
+        <button class="q-opt">เพราะคำนวณยากเกินไป</button>
+        <button class="q-opt" data-ok>เพราะโมเดลทาย "ไม่เกิด" ตลอดก็ได้ 95% ทั้งที่จับเหตุการณ์ไม่ได้เลย</button>
+        <button class="q-opt">เพราะ accuracy ใช้กับ regression เท่านั้น</button>
+        <button class="q-opt">accuracy ไม่มีปัญหา ใช้ได้เสมอ</button>
+      </div>
+      <div class="q-exp"><b>เฉลย:</b> นี่คือปัญหา class imbalance — ต้องดู precision/recall/F1 หรือ Brier/AUC แทน (recall สำคัญมากกับงานเตือนภัย เพราะ FN = พลาดเตือนเหตุการณ์จริง)</div>
+    </div>
+    <div class="q">
+      <div class="q-text">Q2 — train loss ลดลงเรื่อย ๆ แต่ validation loss เริ่มเพิ่มขึ้น แปลว่าอะไร?</div>
+      <div class="q-opts">
+        <button class="q-opt">underfitting — โมเดลง่ายเกินไป</button>
+        <button class="q-opt" data-ok>overfitting — โมเดลเริ่มจำข้อมูล train แทนที่จะเรียนรู้ pattern</button>
+        <button class="q-opt">data leakage</button>
+        <button class="q-opt">learning rate ต่ำเกินไป</button>
+      </div>
+      <div class="q-exp"><b>เฉลย: overfitting</b> — โมเดลเก่งขึ้นเฉพาะกับข้อมูลที่เคยเห็น แต่แย่ลงกับข้อมูลใหม่ ทางแก้: early stopping, regularization, เพิ่มข้อมูล</div>
+    </div>
+    <div class="q">
+      <div class="q-text">Q3 — ทำไมข้อมูลอนุกรมเวลา (time series) ห้ามแบ่ง train/test แบบสุ่ม?</div>
+      <div class="q-opts">
+        <button class="q-opt">เพราะข้อมูลจะไม่ครบ</button>
+        <button class="q-opt">เพราะ random seed ทำให้ผลไม่นิ่ง</button>
+        <button class="q-opt" data-ok>เพราะข้อมูลอนาคตจะปนเข้าไปใน train — โมเดล "แอบเห็นอนาคต" (data leakage) คะแนนสวยเกินจริง</button>
+        <button class="q-opt">แบ่งสุ่มได้ ไม่มีปัญหา</button>
+      </div>
+      <div class="q-exp"><b>เฉลย: data leakage</b> — งานพยากรณ์จริงโมเดลรู้แค่อดีต ดังนั้นต้อง split ตามเวลา (เช่น train 1994–2017, test 2018–2023) หรือใช้ rolling-origin CV</div>
+    </div>
+    <div class="q">
+      <div class="q-text">Q4 — LLM อย่าง ChatGPT ทำงานด้วยหลักการหลักคืออะไร?</div>
+      <div class="q-opts">
+        <button class="q-opt">ค้นหาคำตอบจากฐานข้อมูลความจริง</button>
+        <button class="q-opt" data-ok>ทายโทเค็น (token) ถัดไปที่น่าจะเป็นที่สุด ซ้ำ ๆ จนจบประโยค</button>
+        <button class="q-opt">แปลภาษาด้วยพจนานุกรมขนาดใหญ่</button>
+        <button class="q-opt">จำบทสนทนาทั้งหมดบนอินเทอร์เน็ต</button>
+      </div>
+      <div class="q-exp"><b>เฉลย:</b> next-token prediction — และนี่คือเหตุผลที่เกิด hallucination ได้: โมเดลเลือกคำที่ "น่าจะมา" ตามสถิติ ไม่ได้ตรวจสอบความจริง</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= MODULE 4 : SYSTEM DESIGN ================= -->
+<section id="system">
+  <div class="mod-head rv"><span class="mod-num">04</span><h2>AI System Design</h2><span class="mod-tag">ROUND 2 อาวุธลับ</span></div>
+  <p class="mod-intro rv">รอบชิงไม่ได้วัดว่า "รู้สูตรไหม" แต่วัดว่า <b>ออกแบบระบบ AI ที่ใช้งานได้จริงเป็นไหม</b> —
+  นี่คือจุดที่คนทำโปรเจกต์จริงมาแล้วได้เปรียบที่สุด</p>
+
+  <div class="grid g2">
+    <div class="card rv">
+      <h3><span class="dot"></span>ML Pipeline — 6 ขั้นที่ต้องท่องเป็นลำดับ</h3>
+      <ul>
+        <li><b>1. Frame the problem</b> — ทายอะไร? input/output คืออะไร? วัดความสำเร็จด้วยอะไร?</li>
+        <li><b>2. Data</b> — หาจากไหน, สะอาดไหม, มี bias ไหม, ต้อง validate (หน่วย/ช่วงค่า/missing)</li>
+        <li><b>3. Features</b> — แปลงข้อมูลดิบเป็นตัวแปรที่โมเดลกินได้ (normalize, encode, lag)</li>
+        <li><b>4. Model</b> — <b>เริ่มจากง่ายสุดเสมอ</b> (logistic/tree) ก่อนไปของซับซ้อน</li>
+        <li><b>5. Evaluate</b> — เทียบกับ baseline บน test set ที่ไม่เคยแตะ</li>
+        <li><b>6. Deploy/Monitor</b> — ใช้จริง + เฝ้าดูว่าข้อมูลโลกจริงเปลี่ยน (drift) ไหม</li>
+      </ul>
+    </div>
+
+    <div class="card rv">
+      <h3><span class="dot"></span>Baseline — กฎเหล็กที่กรรมการชอบ</h3>
+      <p>โมเดล AI "ดี" ไม่ใช่เพราะคะแนนสูง แต่เพราะ<b>ชนะตัวเปรียบเทียบที่ยุติธรรม</b>:</p>
+      <ul>
+        <li><b>Majority baseline:</b> ทายคลาสที่เจอบ่อยสุดตลอด — โมเดลต้องชนะอันนี้ก่อน</li>
+        <li><b>Persistence:</b> "พรุ่งนี้เหมือนวันนี้" — สำหรับ time series มันแข็งกว่าที่คิด</li>
+        <li><b>Climatology:</b> ค่าเฉลี่ยตามฤดูกาล/ประวัติศาสตร์</li>
+        <li>ถ้าโมเดลซับซ้อนชนะ baseline แค่นิดเดียว → เลือก baseline (ง่ายกว่า ถูกกว่า อธิบายได้)</li>
+      </ul>
+      <div class="why"><b>ประโยคทองตอน present:</b> "โมเดลของผมชนะ baseline X เท่าไร วัดด้วย metric อะไร และทำไม metric นั้นเหมาะกับโจทย์นี้"</div>
+    </div>
+
+    <div class="card rv">
+      <h3><span class="dot"></span>กับดักที่ทำให้ระบบ AI พังจริง</h3>
+      <ul>
+        <li><b>Data leakage:</b> ข้อมูลที่ "ไม่ควรรู้ตอนทาย" หลุดเข้า training — เช่น normalize ด้วยสถิติของทั้งชุด (รวม test) หรือ feature ที่เกิดหลังเหตุการณ์</li>
+        <li><b>Train/serve skew:</b> ตอน train ใช้ข้อมูลสะอาด ตอนใช้จริงข้อมูลสกปรก</li>
+        <li><b>Imbalanced data:</b> ใช้ accuracy แล้วหลงดีใจ (โมดูล 03)</li>
+        <li><b>หน่วยผิด:</b> Kelvin ปน Celsius, เมตรปนฟุต — ระบบจริงต้องมี "ด่านตรวจ" ที่ fail ดัง ๆ ทันที</li>
+        <li><b>ไม่มี error handling:</b> ดาวน์โหลดล่มกลางทางแล้วเริ่มใหม่หมด — ระบบดีต้อง resume ได้</li>
+      </ul>
+    </div>
+
+    <div class="card rv">
+      <h3><span class="dot"></span>ตอบคำถาม System Design ให้เป็นระบบ</h3>
+      <p>โจทย์แนว "จงออกแบบระบบ AI สำหรับ ____" ตอบตามโครงนี้:</p>
+      <ul>
+        <li><b>ผู้ใช้ &amp; ปัญหา</b> → ใครใช้ ตัดสินใจอะไรจากผลลัพธ์</li>
+        <li><b>นิยาม input/output ชัด ๆ</b> → รวมถึง "ความถี่" (เรียลไทม์? รายวัน?)</li>
+        <li><b>ข้อมูล</b> → แหล่ง, ปริมาณ, ปัญหาที่คาด (missing, bias, privacy)</li>
+        <li><b>โมเดล</b> → เริ่มง่าย + เหตุผลที่เลือก</li>
+        <li><b>การวัดผล</b> → metric + baseline + วิธี split ที่ไม่ leak</li>
+        <li><b>ความเสี่ยง</b> → ถ้าโมเดลทายผิดใครเดือดร้อน มี fallback ไหม</li>
+      </ul>
+      <div class="why"><b>เคล็ดลับ:</b> พูดถึง trade-off เสมอ ("แม่นขึ้นแต่ช้าลง", "recall สูงขึ้นแลกกับเตือนหลอกมากขึ้น") — นี่คือสิ่งที่แยกวิศวกรออกจากคนท่องจำ</div>
+    </div>
+  </div>
+
+  <div class="case rv">
+    <div class="quiz-tag">CASE STUDY // โปรเจกต์ของคุณเอง = ตัวอย่างคำตอบชั้นดี</div>
+    <h3>🔥 Sub-seasonal Heatwave Prediction (Thailand)</h3>
+    <p>โปรเจกต์ heatwave ที่คุณทำอยู่ ตอบครบทุกข้อของ system design — ใช้เล่าในสนามและพอร์ตได้เลย:</p>
+    <ol>
+      <li><b>Frame:</b> ทาย P(เกิด heatwave) ล่วงหน้า 2–6 สัปดาห์ — output เป็นความน่าจะเป็น ไม่ใช่ ใช่/ไม่ใช่ เพราะผู้ใช้ (สาธารณสุข/เกษตร) ต้องชั่งความเสี่ยงเอง</li>
+      <li><b>นิยาม target ตรวจสอบได้:</b> Tmax &gt; เปอร์เซ็นไทล์ 90 ของภูมิอากาศฐาน ≥ 3 วันติด — ไม่ใช่นิยามลอย ๆ</li>
+      <li><b>Data engineering จริง:</b> ดึง ERA5 แบบ resume ได้ + ด่านตรวจหน่วย Kelvin→°C ที่ fail ดัง ๆ</li>
+      <li><b>กัน leakage:</b> ใช้ blocked time-series CV — train อดีต ทดสอบอนาคตเสมอ</li>
+      <li><b>Baseline ยุติธรรม:</b> ต้องชนะ climatology + persistence วัดด้วย Brier Skill Score, ROC-AUC, reliability diagram</li>
+      <li><b>เริ่มจากโมเดลง่าย:</b> logistic regression ก่อน แล้วค่อย gradient boosting — เทียบกันแบบ ablation</li>
+    </ol>
+  </div>
+
+  <div class="quiz rv">
+    <div class="quiz-tag">QUIZ // ลองของ — โมดูล 04</div>
+    <div class="q">
+      <div class="q-text">Q1 — คุณ normalize ข้อมูลด้วย mean/SD ที่คำนวณจาก "ข้อมูลทั้งหมด" ก่อนค่อยแบ่ง train/test ปัญหาคือ?</div>
+      <div class="q-opts">
+        <button class="q-opt">ไม่มีปัญหา ทำแบบนี้ถูกแล้ว</button>
+        <button class="q-opt" data-ok>data leakage — สถิติของ test set รั่วเข้าไปใน training</button>
+        <button class="q-opt">ทำให้โมเดล underfit</button>
+        <button class="q-opt">ทำให้ train ช้าลง</button>
+      </div>
+      <div class="q-exp"><b>เฉลย: leakage</b> — ที่ถูกคือ fit ตัว normalizer จาก train เท่านั้น แล้วเอาไป transform ทั้ง train และ test (หลักเดียวกับ scikit-learn: <code>fit_transform(train)</code> แล้ว <code>transform(test)</code>)</div>
+    </div>
+    <div class="q">
+      <div class="q-text">Q2 — โมเดล deep learning ของคุณชนะ logistic regression อยู่ 0.2% แต่ช้ากว่า 50 เท่า ควรเลือกอะไรไป production?</div>
+      <div class="q-opts">
+        <button class="q-opt">deep learning — คะแนนสูงกว่าต้องชนะ</button>
+        <button class="q-opt" data-ok>logistic regression — ผลต่างจิ๋วไม่คุ้มความซับซ้อน แถมอธิบายได้และดูแลง่ายกว่า</button>
+        <button class="q-opt">รวมสองโมเดล (ensemble) เสมอ</button>
+        <button class="q-opt">train deep learning ต่ออีกจนกว่าจะชนะขาด</button>
+      </div>
+      <div class="q-exp"><b>เฉลย:</b> วิศวกรรมคือ trade-off — ความง่าย ความเร็ว การอธิบายได้ มีมูลค่าจริง คำตอบแบบนี้แหละที่ทำให้กรรมการรู้ว่าคุณ "คิดแบบ engineer"</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= MODULE 5 : ARENA ================= -->
+<section id="arena">
+  <div class="mod-head rv"><span class="mod-num">05</span><h2>ยุทธศาสตร์สนามจริง</h2><span class="mod-tag">TACTICS</span></div>
+  <p class="mod-intro rv">ความรู้เท่ากัน คนที่<b>บริหารเวลาและความกดดัน</b>ได้ดีกว่าคือคนเข้ารอบ</p>
+
+  <div class="grid g2">
+    <div class="card rv">
+      <h3><span class="dot"></span>รอบ 1 — สอบออนไลน์ 90 นาที</h3>
+      <ul>
+        <li><b>กวาด 3 รอบ:</b> รอบแรกเก็บข้อง่าย (ห้ามจมข้อยากเกิน 90 วินาที) → รอบสองข้อกลาง → รอบสามสู้ข้อยาก</li>
+        <li>ข้อคำนวณ: เขียนทดเสมอ อย่าคิดในหัวล้วน — ความเครียดทำให้เลขง่ายพลาด</li>
+        <li>ข้อโค้ด: ไล่ค่าทีละบรรทัดบนกระดาษทด (ตาราง: ตัวแปร | ค่า)</li>
+        <li><b>ก่อนสอบ 1 วัน:</b> ทดสอบคอม + เน็ต + กล้อง, ชาร์จแบต, เตรียมเน็ตสำรอง (hotspot มือถือ), นอนให้พอ</li>
+        <li><b>mock exam:</b> ซ้อมทำโจทย์จับเวลา 90 นาทีจริง อย่างน้อย 2 ครั้งก่อนวันสอบ</li>
+      </ul>
+    </div>
+    <div class="card rv">
+      <h3><span class="dot"></span>รอบ 2 — Mini Project สด</h3>
+      <ul>
+        <li><b>กฎ 80/20:</b> ใช้ 20% แรกของเวลาวางแผน (โจทย์ถามอะไรกันแน่ → pipeline 6 ขั้น) ก่อนแตะคีย์บอร์ด</li>
+        <li><b>Baseline first:</b> ทำเวอร์ชันโง่ที่สุดที่ "จบครบ loop" ให้ได้ก่อน แล้วค่อยปรับ — งานเสร็จ 70% ชนะงานเทพที่เสร็จ 30%</li>
+        <li>commit/save บ่อย ๆ — ของพังตอนเหลือ 10 นาทีคือฝันร้ายคลาสสิก</li>
+        <li><b>ตอน present:</b> เล่าตามโครง ปัญหา → ข้อมูล → วิธี → ผลเทียบ baseline → ข้อจำกัด — การยอมรับข้อจำกัดเองได้คะแนนมากกว่าโม้</li>
+        <li>เก็บทุกอย่างจาก bootcamp 4 สัปดาห์ — โจทย์รอบชิงมักล้อกับสิ่งที่สอน</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card rv" style="margin-top:18px">
+    <h3><span class="dot"></span>เช็คลิสต์ก่อนวันสอบรอบ 1</h3>
+    <div class="check">
+      <label><input type="checkbox"><span>ทำควิซทุกโมดูลในเว็บนี้ได้ถูกหมดโดยไม่ดูเฉลย</span></label>
+      <label><input type="checkbox"><span>คูณเมทริกซ์ 2×2, 3×3 ด้วยมือได้คล่อง + รู้เงื่อนไขขนาด</span></label>
+      <label><input type="checkbox"><span>ทำโจทย์ความน่าจะเป็น (เต๋า/ไพ่/เงื่อนไข/Bayes) ได้ 10 ข้อรวด</span></label>
+      <label><input type="checkbox"><span>ไล่ output โค้ด Python (loop, slicing, recursion, OOP) ได้แม่น</span></label>
+      <label><input type="checkbox"><span>เรียง Big-O และจับ Big-O ของโค้ดที่เห็นได้ทันที</span></label>
+      <label><input type="checkbox"><span>อธิบาย overfitting / train-test split / leakage ให้เพื่อนฟังรู้เรื่องใน 2 นาที</span></label>
+      <label><input type="checkbox"><span>อธิบาย precision vs recall ด้วยตัวอย่างของตัวเอง</span></label>
+      <label><input type="checkbox"><span>รู้ศัพท์ Gen AI: token, embedding, attention, hallucination, fine-tuning, RAG</span></label>
+      <label><input type="checkbox"><span>ซ้อม mock exam จับเวลา 90 นาที ≥ 2 ครั้ง</span></label>
+      <label><input type="checkbox"><span>เล่าโปรเจกต์ heatwave จบใน 3 นาที (ปัญหา→ข้อมูล→วิธี→ผล→ข้อจำกัด)</span></label>
+      <label><input type="checkbox"><span>ทดสอบคอม/เน็ต/อุปกรณ์สอบออนไลน์เรียบร้อย</span></label>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div>TAIEC<b>//PREP</b> — สร้างเพื่อภารกิจ 25 ก.ค. 2026 · สู้ ๆ 🔥</div>
+  <div>ข้อมูลการแข่ง: ascend.cmkl.ac.th/taiec</div>
+</footer>
+
+<script>
+/* countdown */
+const target = new Date('2026-07-25T00:00:00+07:00').getTime();
+function pad(n){return String(n).padStart(2,'0')}
+function tick(){
+  const d = Math.max(0, target - Date.now());
+  const days = Math.floor(d/864e5), h = Math.floor(d%864e5/36e5),
+        m = Math.floor(d%36e5/6e4), s = Math.floor(d%6e4/1e3);
+  cdD.textContent = days; cdH.textContent = pad(h);
+  cdM.textContent = pad(m); cdS.textContent = pad(s);
+  navCount.textContent = days + 'd ' + pad(h) + ':' + pad(m) + ':' + pad(s);
+}
+tick(); setInterval(tick, 1000);
+
+/* scroll progress */
+addEventListener('scroll', () => {
+  const h = document.documentElement;
+  progress.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%';
+}, {passive:true});
+
+/* reveal on scroll */
+const io = new IntersectionObserver(es => es.forEach(e => {
+  if (e.isIntersecting){ e.target.classList.add('on'); io.unobserve(e.target); }
+}), {threshold:.12});
+document.querySelectorAll('.rv').forEach(el => io.observe(el));
+
+/* quiz */
+document.querySelectorAll('.q').forEach(q => {
+  const opts = q.querySelectorAll('.q-opt'), exp = q.querySelector('.q-exp');
+  opts.forEach(btn => btn.addEventListener('click', () => {
+    opts.forEach(b => { b.disabled = true; if (b.hasAttribute('data-ok')) b.classList.add('correct'); });
+    if (!btn.hasAttribute('data-ok')) btn.classList.add('wrong');
+    exp.classList.add('show');
+  }));
+});
+
+/* gradient descent demo */
+const cv = document.getElementById('gdCanvas'), cx = cv.getContext('2d');
+const lrSlider = document.getElementById('gdLr'), lrVal = document.getElementById('gdLrVal');
+const log = document.getElementById('gdLog');
+const f = w => 0.18*(w-3)**2 + 0.6;      // loss curve
+const df = w => 0.36*(w-3);              // gradient
+let w = -2.6, running = false, step = 0;
+const W2X = w_ => (w_+4)/11 * cv.width;
+const F2Y = v  => cv.height - 30 - v/3.2*(cv.height-60);
+
+function draw(){
+  cx.clearRect(0,0,cv.width,cv.height);
+  // axes grid
+  cx.strokeStyle = '#1b2230'; cx.lineWidth = 1;
+  for(let gx=0; gx<cv.width; gx+=48){cx.beginPath();cx.moveTo(gx,0);cx.lineTo(gx,cv.height);cx.stroke();}
+  // curve
+  cx.beginPath();
+  for(let px=0; px<=cv.width; px+=3){
+    const wx = px/cv.width*11 - 4, py = F2Y(f(wx));
+    px===0 ? cx.moveTo(px,py) : cx.lineTo(px,py);
+  }
+  const grad = cx.createLinearGradient(0,0,cv.width,0);
+  grad.addColorStop(0,'#ff4d00'); grad.addColorStop(1,'#ffc400');
+  cx.strokeStyle = grad; cx.lineWidth = 2.5; cx.stroke();
+  // minimum marker
+  cx.setLineDash([4,5]); cx.strokeStyle = '#3ddc84'; cx.lineWidth = 1;
+  cx.beginPath(); cx.moveTo(W2X(3), 0); cx.lineTo(W2X(3), cv.height); cx.stroke();
+  cx.setLineDash([]);
+  cx.fillStyle = '#3ddc84'; cx.font = '11px IBM Plex Mono';
+  cx.fillText('w* (จุดต่ำสุด)', W2X(3)+8, 18);
+  // ball
+  const bx = W2X(w), by = F2Y(f(w));
+  cx.beginPath(); cx.arc(bx, by, 9, 0, 7);
+  cx.fillStyle = '#fff'; cx.shadowColor = '#ff9100'; cx.shadowBlur = 18;
+  cx.fill(); cx.shadowBlur = 0;
+  cx.fillStyle = '#ffc400'; cx.font = '12px IBM Plex Mono';
+  cx.fillText('w=' + w.toFixed(2), bx+14, by-10);
+}
+function gdStep(){
+  if (!running) return;
+  const g = df(w), lr = parseFloat(lrSlider.value);
+  w = w - lr*g*9; step++;
+  log.textContent = 'step ' + step + '  |  w = ' + w.toFixed(3) + '  |  gradient = ' + g.toFixed(3) + '  |  loss = ' + f(w).toFixed(3);
+  if (Math.abs(w) > 60){ log.textContent += '   💥 ระเบิด! α ใหญ่เกินไป — ลูกบอลกระโดดข้ามเหวแรงขึ้นเรื่อย ๆ (diverge)'; running = false; }
+  else if (Math.abs(g) < 0.004){ log.textContent += '   ✅ ลู่เข้าแล้ว (converged)'; running = false; }
+  draw();
+  if (running) setTimeout(gdStep, 220);
+}
+lrSlider.addEventListener('input', () => lrVal.textContent = parseFloat(lrSlider.value).toFixed(2));
+document.getElementById('gdRun').addEventListener('click', () => { if(!running){ running = true; gdStep(); } });
+document.getElementById('gdReset').addEventListener('click', () => { running = false; w = -2.6; step = 0; log.textContent = ''; draw(); });
+draw();
+</script>
+</body>
+</html>

@@ -32,10 +32,22 @@ scripts/
   cv.py                blocked/rolling-origin time-series CV (กัน leakage)
   evaluate.py          Brier/BSS/AUC/reliability + baselines (seasonal climatology, persistence)
   models.py            model registry (logistic / lgbm ไม่ถ่วงน้ำหนัก = หลัก ; *_balanced / balanced_rf = ablation)
+  build_dataset.py     ประกอบตาราง feature/target ราย lead -> data/processed/dataset.csv
+  train.py             CV + baselines + recalibration ablation -> outputs/ (metrics, figures)
   download_*.py        สคริปต์ดึงข้อมูล (resume + validate ได้)
-data/    raw/ + processed/   (ไม่ commit)
-docs/    spec และเอกสาร
+data/     raw/ + processed/   (ไม่ commit)
+outputs/  เมตริก + กราฟผลการทดลอง (ไม่ commit)
+docs/     spec และเอกสาร
 ```
+
+## นิยาม target เชิงพื้นที่ (ตัดสินใจ 2026-06-11)
+
+- **หลัก — regional-mean**: เฉลี่ย Tmax ทั้งกรอบไทย (ถ่วง cos(lat)) ก่อน แล้วหาเกณฑ์
+  p90 ราย doy + ≥3 วันติด — สัญญาณ sub-seasonal มาจาก driver ระดับใหญ่
+  จึงสอดคล้องกับเหตุการณ์ระดับภูมิภาคที่สุด
+- **รอง — area-fraction (ablation)**: heatwave รายเซลล์ แล้วนับวันที่สัดส่วนพื้นที่ ≥ 15%
+- **เสริม**: regional-mean ที่ p95 (ตาม spec ให้เทียบ 90 vs 95)
+- target รายสัปดาห์: y=1 ถ้ามีวัน heatwave ≥1 วันในหน้าต่าง 7 วันที่ lead 2-6 สัปดาห์
 
 ทุกโมดูลมี self-test ในตัว: `python scripts/<module>.py`
 (console ภาษาไทยบน Windows: ตั้ง `PYTHONIOENCODING=utf-8`)
@@ -46,12 +58,34 @@ docs/    spec และเอกสาร
 pip install -r requirements.txt
 ```
 
-## สถานะ (2026-06-10)
+## สถานะ (2026-06-11) — pipeline รอบแรกครบ ✅
 
 - [x] โมดูลพื้นฐาน 5 ตัว + self-test ผ่าน
-- [ ] ดาวน์โหลด ERA5 ให้ครบ 1994–2023 (กำลังรัน)
-- [ ] ตัดสินนิยาม target เชิงพื้นที่ (regional-mean vs area-fraction)
+- [x] ดาวน์โหลด ERA5 ครบ 1994–2023 (ม.ค.–ก.ค.) + ดัชนี MJO/Niño3.4
+- [x] ตัดสินนิยาม target เชิงพื้นที่ (regional-mean หลัก + area-fraction ablation)
 - [x] BSS รับ baseline จากชุด train + baseline helpers (seasonal climatology, conditional persistence)
 - [x] โมเดลไม่ถ่วงน้ำหนักเป็นค่าเริ่มต้น (`logistic`, `lgbm`) ; ตัวถ่วงน้ำหนักเป็น ablation
-- [ ] `build_dataset.py` (ประกอบ feature ตาม lead time, lag Niño3.4 1 เดือน)
-- [ ] `train.py` + recalibration ของโมเดล ablation บน validation block แยกตามเวลา + ประเมินผล
+- [x] `build_dataset.py` — 6,367 วันออกพยากรณ์, 20 features, target 3 นิยาม × lead 2–6 สัปดาห์
+- [x] `train.py` — rolling-origin CV (gap 49 วัน) + recalibration (Platt บน block แยกตามเวลา) + ประเมินผล
+
+## ผลหลักรอบแรก (2026-06-11)
+
+BSS (pooled, เทียบ seasonal climatology) — target หลัก regional-mean p90:
+
+| โมเดล | lead 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|
+| logistic | **+0.168** | +0.109 | +0.118 | +0.050 | −0.014 |
+| lgbm_cal | +0.144 | **+0.156** | +0.059 | +0.024 | **+0.103** |
+| logistic_balanced_cal | +0.194 | +0.138 | +0.164 | +0.081 | +0.071 |
+| persistence (baseline) | +0.095 | +0.048 | +0.047 | +0.024 | +0.017 |
+
+- **เกณฑ์ความสำเร็จผ่าน**: ชนะทั้ง climatology และ persistence — logistic ที่ lead 2–5, lgbm_cal ทุก lead
+- บทเรียนสำคัญ: lgbm ดิบ AUC ดี (0.69–0.76) แต่ BSS ติดลบทุก lead → probability ต้อง recalibrate เสมอ
+- Feature สำคัญสุด (lgbm gain): `nino34_lag1m` > `sm1_mean30` > `sm3_mean30` — สอดคล้องสมมติฐาน ENSO + soil-moisture memory
+- รายละเอียดเต็ม: `outputs/metrics_pooled.csv`, กราฟ reliability + feature importance ที่ `outputs/figures/`
+
+## งานถัดไป (ทางเลือก)
+
+- [ ] วิเคราะห์ fold ที่อ่อน (ปี El Niño 2015/16, 2023) + sensitivity ของ AF_THRESHOLD
+- [ ] ขยายข้อมูลเป็นทั้งปี / เพิ่ม feature (SST, geopotential)
+- [ ] ablation NDVI ตาม spec (ท้ายเล่ม)
