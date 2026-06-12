@@ -125,15 +125,24 @@ def fit_predict_calibrated(name: str, X_tr, y_tr, X_te) -> np.ndarray | None:
 
 
 def run_target_lead(df: pd.DataFrame, target: str, lead: int,
-                    verbose: bool = True) -> tuple[pd.DataFrame, pd.DataFrame]:
+                    verbose: bool = True, features: list[str] | None = None,
+                    models: list[str] | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
     """รัน CV ครบทุกโมเดล/บาสไลน์ของ (target, lead) หนึ่งคู่.
 
     คืน (per-fold metrics, per-day predictions)
+
+    features: ชุดฟีเจอร์ที่ป้อนโมเดล (None = FEATURES ครบ) — ใช้ทำ ablation รายกลุ่ม.
+              เลือกแถวด้วย dropna บน FEATURES "ครบ" เสมอ -> ทุก ablation ใช้แถวเดียวกัน
+              (เทียบยุติธรรม ต่างกันแค่คอลัมน์ที่ป้อนโมเดล).
+    models:   จำกัดรายชื่อโมเดลที่จะเทรน (None = ครบ) — เร่ง ablation.
+              baseline climatology/persistence ผลิตเสมอ (reference ของ BSS และราคาถูก).
     """
+    feats = list(features) if features is not None else FEATURES
+    want = lambda name: models is None or name in models  # noqa: E731
     col = f"{target}_l{lead}"
     cols = FEATURES + ["doy", col]
     sub = df[cols].dropna().sort_index()
-    X = sub[FEATURES].to_numpy(dtype=float)
+    X = sub[feats].to_numpy(dtype=float)
     y = sub[col].to_numpy(dtype=float)
     doy = sub["doy"].to_numpy(dtype=int)
     state = sub["in_hw_today"].to_numpy(dtype=int)
@@ -156,12 +165,16 @@ def run_target_lead(df: pd.DataFrame, target: str, lead: int,
 
         # --- โมเดลหลัก ---
         for name in MAIN_MODELS:
+            if not want(name):
+                continue
             est = make_estimator(name)
             est.fit(X[tr], y_tr)
             forecasts[name] = est.predict_proba(X[te])[:, 1]
 
         # --- ablation + recalibration (รวม lgbm หลักเวอร์ชัน calibrate) ---
         for name in ABLATION_MODELS + CALIBRATED_MAIN:
+            if not want(f"{name}_cal"):
+                continue
             p_cal = fit_predict_calibrated(name, X[tr], y_tr, X[te])
             if p_cal is not None:
                 forecasts[f"{name}_cal"] = p_cal

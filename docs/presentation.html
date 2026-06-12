@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeepSeek Heatwave — Technical Presentation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Sarabun:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#0f1020;--card:#1e2140;--ink:#eef0ff;--muted:#aab0d8;
+    --hot:#ff6b35;--hot2:#ffb13c;--cool:#3ba7ff;--good:#36d399;--bad:#ff5d6c;--line:#2c2f55}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Kanit','Sarabun',Tahoma,sans-serif;background:var(--bg);color:var(--ink);overflow:hidden;height:100vh}
+  .deck{position:fixed;inset:0}
+  .slide{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;
+    text-align:center;padding:5vh 6vw;opacity:0;pointer-events:none;transform:scale(.985);
+    transition:opacity .4s,transform .4s;background:radial-gradient(1100px 460px at 50% 0%,#2a160d 0,transparent 58%),var(--bg)}
+  .slide.active{opacity:1;pointer-events:auto;transform:none}
+  .kicker{color:var(--hot2);font-weight:600;letter-spacing:2px;font-size:clamp(12px,1.5vw,17px);text-transform:uppercase;margin-bottom:12px}
+  h1{font-size:clamp(32px,7vw,74px);font-weight:700;line-height:1.1;background:linear-gradient(90deg,#fff,#ffd9a0);-webkit-background-clip:text;background-clip:text;color:transparent}
+  h2{font-size:clamp(24px,4.6vw,48px);font-weight:600;line-height:1.18;margin-bottom:6px}
+  h3.gh{font-size:clamp(20px,2.8vw,30px);font-weight:600;margin:4px 0 12px}
+  .sub{color:var(--muted);font-size:clamp(15px,2.3vw,25px);margin-top:16px;max-width:920px;line-height:1.55}
+  .big{font-size:clamp(38px,9vw,104px);font-weight:700;line-height:1}
+  .big.good{color:var(--good)}.big.hot{color:var(--hot2)}.big.bad{color:var(--bad)}
+
+  .slide .u{opacity:0;transform:translateY(24px)}
+  .slide.active .u{opacity:1;transform:none;transition:all .5s cubic-bezier(.2,.7,.2,1)}
+  .slide.active .u:nth-child(2){transition-delay:.07s}.slide.active .u:nth-child(3){transition-delay:.14s}
+  .slide.active .u:nth-child(4){transition-delay:.21s}.slide.active .u:nth-child(5){transition-delay:.28s}
+
+  .sun{width:clamp(78px,11vw,130px);height:clamp(78px,11vw,130px);border-radius:50%;margin-bottom:24px;
+    background:radial-gradient(circle at 50% 45%,#fff3b0,var(--hot2) 45%,var(--hot) 75%);
+    box-shadow:0 0 70px 18px rgba(255,107,53,.5);animation:pulse 3.6s ease-in-out infinite}
+  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+
+  .cards{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;margin-top:26px;max-width:1050px}
+  .c{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 20px;width:clamp(210px,27vw,290px);text-align:left}
+  .c .ic{font-size:40px}.c h4{font-size:clamp(17px,2.2vw,23px);margin:8px 0 5px}
+  .c p{color:var(--muted);font-size:clamp(13px,1.7vw,17px);line-height:1.45}
+
+  /* technical list */
+  .mlist{max-width:980px;width:100%;margin-top:22px;text-align:left;display:grid;gap:12px}
+  .mrow{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:14px 18px;display:flex;gap:14px;align-items:flex-start}
+  .mrow .mi{font-size:26px;flex:0 0 auto}
+  .mrow b{color:var(--hot2)}.mrow span{color:var(--muted);font-size:clamp(14px,1.8vw,18px)}
+
+  /* roadmap */
+  .road{display:grid;grid-template-columns:1fr 1fr;gap:22px;max-width:1000px;margin-top:22px;width:100%}
+  @media(max-width:760px){.road{grid-template-columns:1fr}}
+  .phase{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;text-align:left}
+  .phase.done{border-color:var(--good)}.phase.next{opacity:.92;border-style:dashed}
+  .phase h3{font-size:clamp(17px,2.3vw,23px);margin-bottom:12px}
+  .tagp{font-size:13px;font-weight:600;padding:3px 10px;border-radius:20px;margin-left:8px}
+  .done .tagp{background:rgba(54,211,153,.16);color:var(--good)}.next .tagp{background:rgba(59,167,255,.16);color:var(--cool)}
+  .li{display:flex;align-items:center;gap:11px;font-size:clamp(14px,1.9vw,19px);margin:10px 0}
+  .here{display:inline-block;background:var(--hot);color:#1a0d06;font-weight:700;font-size:12px;padding:3px 9px;border-radius:20px;margin-left:6px;animation:blink 1.4s infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.5}}
+
+  /* GRAPH slide */
+  .gslide{display:grid;grid-template-columns:1.12fr .88fr;gap:28px;align-items:center;width:100%;max-width:1280px}
+  @media(max-width:880px){.gslide{grid-template-columns:1fr;gap:14px}}
+  .gslide img{width:100%;max-height:70vh;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:12px;padding:6px}
+  @media(max-width:880px){.gslide img{max-height:42vh}}
+  .gtext{text-align:left}
+  .says{color:var(--cool);font-weight:600;font-size:clamp(15px,1.9vw,20px);margin:8px 0 8px}
+  ul.exp{list-style:none;display:grid;gap:9px}
+  ul.exp li{position:relative;padding-left:22px;color:var(--ink);font-size:clamp(14px,1.75vw,18.5px);line-height:1.45}
+  ul.exp li::before{content:"▸";position:absolute;left:0;color:var(--hot2)}
+  .axis{color:var(--muted)}
+  .key{margin-top:14px;background:linear-gradient(135deg,#3a1d12,#241433);border:1px solid #4a2a1a;border-radius:12px;padding:12px 16px;font-size:clamp(14px,1.8vw,18.5px)}
+  .key b{color:var(--good)}
+
+  .stat{display:flex;gap:28px;flex-wrap:wrap;justify-content:center;margin-top:22px}
+  .stat .s{min-width:170px}.stat .s .v{font-size:clamp(32px,6vw,60px);font-weight:700}
+  .stat .s .l{color:var(--muted);font-size:clamp(13px,1.6vw,16px)}
+  .v.good{color:var(--good)}.v.hot{color:var(--hot2)}.v.cool{color:var(--cool)}.v.bad{color:var(--bad)}
+  .pills{display:flex;gap:11px;flex-wrap:wrap;justify-content:center;margin-top:20px}
+  .pill{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:11px 16px;font-size:clamp(14px,1.9vw,19px)}
+
+  #prog{position:fixed;top:0;left:0;height:4px;width:0;z-index:50;background:linear-gradient(90deg,var(--hot),var(--hot2));transition:width .3s}
+  .counter{position:fixed;top:14px;right:20px;color:var(--muted);font-size:14px;z-index:50;font-variant-numeric:tabular-nums}
+  .label{position:fixed;top:14px;left:20px;color:#6b71a3;font-size:13px;z-index:50;letter-spacing:1px}
+  .hint{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);color:#5a608c;font-size:12px;z-index:50}
+  .arrow{position:fixed;top:50%;transform:translateY(-50%);z-index:50;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);width:46px;height:46px;border-radius:50%;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .arrow:hover{background:rgba(255,255,255,.15)}#prev{left:16px}#next{right:16px}
+  .dots{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);display:flex;gap:7px;z-index:50;flex-wrap:wrap;max-width:80vw;justify-content:center}
+  .dot{width:9px;height:9px;border-radius:50%;background:#3a3f66;cursor:pointer;transition:all .25s}
+  .dot.on{background:var(--hot2);transform:scale(1.3)}
+  .em{color:var(--hot2);font-weight:600}.emg{color:var(--good);font-weight:600}
+  code{background:#0d0f22;border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-size:.9em;color:#ffd9a0}
+</style>
+</head>
+<body>
+<div id="prog"></div>
+<div class="label">DeepSeek Heatwave</div>
+<div class="counter"><span id="cur">1</span> / <span id="tot">0</span></div>
+<div class="arrow" id="prev">‹</div><div class="arrow" id="next">›</div>
+<div class="dots" id="dots"></div>
+<div class="hint">← → เลื่อนสไลด์ · F เต็มจอ</div>
+
+<div class="deck" id="deck">
+
+  <!-- 1 TITLE -->
+  <section class="slide">
+    <div class="sun u"></div>
+    <h1 class="u">DeepSeek&nbsp;Heatwave</h1>
+    <p class="sub u">การพยากรณ์ <b>ความน่าจะเป็นของคลื่นความร้อน</b> แบบ sub-seasonal (ล่วงหน้า <span class="em">2–6 สัปดาห์</span>) สำหรับประเทศไทย ด้วย Machine Learning</p>
+    <p class="sub u" style="font-size:clamp(13px,1.7vw,17px);color:#7c82ab">ฉบับเทคนิค · ข้อมูล ERA5 30 ปี · ผลการทดลองจริง</p>
+  </section>
+
+  <!-- 2 PROBLEM -->
+  <section class="slide">
+    <div class="kicker u">ปัญหา &amp; แรงจูงใจ</div>
+    <h2 class="u">คลื่นความร้อน = ภัยเงียบที่พยากรณ์ล่วงหน้าได้ยาก</h2>
+    <div class="cards">
+      <div class="c u"><div class="ic">⚠️</div><h4>อันตรายต่อชีวิต</h4><p>เพิ่มการป่วย/เสียชีวิตของกลุ่มเปราะบาง</p></div>
+      <div class="c u"><div class="ic">📅</div><h4>พยากรณ์ทั่วไปสั้น</h4><p>มองได้ไม่กี่วัน — ช่วง 2–6 สัปดาห์เป็น "ช่องว่าง" ที่ยังทำได้ไม่ดี</p></div>
+      <div class="c u"><div class="ic">🎯</div><h4>โอกาส</h4><p>ถ้าเตือนล่วงหน้าได้หลายสัปดาห์ = เตรียมรับมือทัน</p></div>
+    </div>
+  </section>
+
+  <!-- 3 GOAL -->
+  <section class="slide">
+    <div class="kicker u">โจทย์วิจัย</div>
+    <h2 class="u">ทำนาย "ความน่าจะเป็น" ของ heatwave<br>ในหน้าต่าง 7 วัน ที่ lead 2–6 สัปดาห์</h2>
+    <p class="sub u">เป็นปัญหา <b>probabilistic binary forecasting</b> ของเหตุการณ์หายาก
+      → วัดด้วยเมตริกความน่าจะเป็น ไม่ใช่ accuracy</p>
+    <p class="sub u">เป้าหมายเชิงปฏิบัติ: ต่อยอดเป็น <span class="em">เว็บ/แอปแจ้งเตือน</span></p>
+  </section>
+
+  <!-- 4 METHOD (technical) -->
+  <section class="slide">
+    <div class="kicker u">ระเบียบวิธี · ข้อมูล &amp; โมเดล</div>
+    <h2 class="u">ตั้งโจทย์เป็น "ตาราง" แล้วใช้ ML คลาสสิก</h2>
+    <div class="mlist">
+      <div class="mrow u"><span class="mi">📊</span><span><b>ข้อมูล:</b> ERA5 รายวัน 1994–2023 (อุณหภูมิ + ความชื้นดิน) + ดัชนี ENSO &amp; MJO → <b>20 features</b> ต่อวันออกพยากรณ์ (มองย้อนหลังเท่านั้น กัน leakage)</span></div>
+      <div class="mrow u"><span class="mi">🌡️</span><span><b>นิยาม target:</b> อุณหภูมิสูงสุดเฉลี่ยภูมิภาค (ถ่วง cos-lat) เกิน <code>เปอร์เซ็นไทล์ 90</code> ต่อเนื่อง <code>≥ 3 วัน</code></span></div>
+      <div class="mrow u"><span class="mi">🤖</span><span><b>โมเดล:</b> Logistic Regression &amp; LightGBM (+ เวอร์ชัน recalibrate) — เบา รันบน CPU ได้</span></div>
+    </div>
+  </section>
+
+  <!-- 5 VALIDATION (technical, the rigor) -->
+  <section class="slide">
+    <div class="kicker u">ระเบียบวิธี · การพิสูจน์ที่ "กันการโกง"</div>
+    <h2 class="u">หัวใจคือ validation ที่เข้มงวด</h2>
+    <div class="mlist">
+      <div class="mrow u"><span class="mi">⏳</span><span><b>Rolling-origin CV:</b> แบ่งข้อมูลตามเวลา (train อยู่ก่อน test เสมอ) + เว้นช่อง <code>49 วัน</code> ระหว่างกัน → โมเดลห้าม "เห็นอนาคต"</span></div>
+      <div class="mrow u"><span class="mi">⚖️</span><span><b>2 baseline ที่ต้องเอาชนะ:</b> seasonal climatology (ค่าเฉลี่ยตามวันในปี) และ persistence (ตอนนี้ร้อน→ร้อนต่อ)</span></div>
+      <div class="mrow u"><span class="mi">📐</span><span><b>เมตริก:</b> Brier / <b>BSS</b> (สกิลของความน่าจะเป็น), AUC (การแยกแยะ), reliability (calibration)</span></div>
+      <div class="mrow u"><span class="mi">🎲</span><span><b>ความไม่แน่นอน:</b> moving-block bootstrap (คุม autocorrelation) → ช่วงเชื่อมั่น 95% + คุม false discovery (BH-FDR)</span></div>
+    </div>
+  </section>
+
+  <!-- 6 ROADMAP -->
+  <section class="slide">
+    <div class="kicker u">สถานะโครงการ</div>
+    <h2 class="u">จบ "เฟสโมเดล" แล้ว ✅ — ต่อไปคือ "เฟสแอป"</h2>
+    <div class="road">
+      <div class="phase done u">
+        <h3>Phase 1 · โมเดล &amp; การพิสูจน์ <span class="tagp">เสร็จ</span></h3>
+        <div class="li">✅ เก็บข้อมูล ERA5 30 ปี</div>
+        <div class="li">✅ pipeline + โมเดล</div>
+        <div class="li">✅ วิเคราะห์ความแกร่ง (สถิติ)</div>
+        <div class="li">✅ ปรับโมเดลให้ดีสุด <span class="here">อยู่ตรงนี้</span></div>
+      </div>
+      <div class="phase next u">
+        <h3>Phase 2 · ทำเป็นแอป <span class="tagp">ต่อไป</span></h3>
+        <div class="li">⬜ พยากรณ์อัตโนมัติ (เรียลไทม์)</div>
+        <div class="li">⬜ เว็บ/แอป dashboard</div>
+        <div class="li">⬜ ระบบแจ้งเตือนล่วงหน้า</div>
+        <div class="li">⬜ ทดลองกับผู้ใช้จริง</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 RESULTS INTRO -->
+  <section class="slide">
+    <div class="kicker u">ผลการทดลอง</div>
+    <h1 class="u">📈 มาดูทีละกราฟ</h1>
+    <p class="sub u">แต่ละกราฟจะมีแผง <span class="em">"กราฟนี้บอกอะไร"</span> อธิบายกำกับ</p>
+  </section>
+
+  <!-- 8 GRAPH 1: BSS vs lead + CI -->
+  <section class="slide">
+    <div class="gslide">
+      <img class="u" src="../outputs/analysis/figures/bss_vs_lead_ci.png" alt="BSS vs lead with CI">
+      <div class="gtext u">
+        <div class="kicker">ผล 1 · สกิล + ความเชื่อมั่น</div>
+        <h3 class="gh">โมเดลเอาชนะ baseline ที่ระยะสั้น</h3>
+        <div class="says">📊 กราฟนี้บอกอะไร</div>
+        <ul class="exp">
+          <li><span class="axis">แกนนอน = ล่วงหน้ากี่สัปดาห์ · แกนตั้ง = BSS (>0 คือเก่งกว่า climatology)</span></li>
+          <li>แต่ละเส้น = 1 โมเดล · แท่ง = ช่วงเชื่อมั่น 95% (จาก bootstrap)</li>
+          <li>ที่ lead 2 ทุกเส้น <b>แท่งไม่แตะ 0</b> = ชนะอย่างมีนัยสำคัญ ; ไกลขึ้นสกิลจางลงตามธรรมชาติ</li>
+          <li>เส้นเขียว (logistic บาลานซ์+คาลิเบรต) อยู่เหนือเส้นประ persistence นานสุด</li>
+        </ul>
+        <div class="key">💡 <b>สรุป:</b> มีสกิลจริงและพิสูจน์ได้ที่ <b>2–4 สัปดาห์</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9 GRAPH 2: skill by ENSO -->
+  <section class="slide">
+    <div class="gslide">
+      <img class="u" src="../outputs/analysis/figures/skill_by_enso.png" alt="Skill by ENSO regime">
+      <div class="gtext u">
+        <div class="kicker">ผล 2 · แยกตามสภาวะมหาสมุทร</div>
+        <h3 class="gh">เอลนีโญคือกุญแจ</h3>
+        <div class="says">📊 กราฟนี้บอกอะไร</div>
+        <ul class="exp">
+          <li><span class="axis">แท่ง = BSS ในแต่ละสภาวะ ENSO · ตัวเลขกำกับ = base rate (ความถี่จริง)</span></li>
+          <li>ปีเอลนีโญ heatwave ถี่ ~<b>0.45</b> (เกือบครึ่งวัน) · ลานีญา ~<b>0.05</b></li>
+          <li>โมเดล <b>แม่นสุดช่วงเอลนีโญ</b> เพราะ climatology ทายต่ำไป โมเดลที่รู้ ENSO เลยชนะเยอะ</li>
+          <li>ลานีญา (เหตุการณ์น้อย) บางโมเดลทำได้ไม่ดี — สมเหตุสมผล</li>
+        </ul>
+        <div class="key">💡 <b>สรุป:</b> ปรับความเข้าใจเดิม — "ปีเอลนีโญไม่ได้อ่อน แต่กลับเป็นช่วงที่โมเดลเก่งสุด"</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 GRAPH 3: calibration methods -->
+  <section class="slide">
+    <div class="gslide">
+      <img class="u" src="../outputs/analysis/figures/calibration_methods_lgbm.png" alt="Calibration methods">
+      <div class="gtext u">
+        <div class="kicker">ผล 3 · คุณภาพความน่าจะเป็น</div>
+        <h3 class="gh">ทำไม LightGBM ต้อง recalibrate</h3>
+        <div class="says">📊 กราฟนี้บอกอะไร</div>
+        <ul class="exp">
+          <li><span class="axis">เทียบ 3 วิธี: raw (ดิบ) / Platt / Isotonic · แกนตั้ง = BSS</span></li>
+          <li>เส้น raw (เทา) <b>ติดลบทุก lead</b> = ความน่าจะเป็น "เฟ้อ/มั่นใจเกินจริง"</li>
+          <li>Platt และ Isotonic <b>ดึงกลับมาเป็นบวก</b> ได้ทั้งคู่</li>
+        </ul>
+        <div class="key">💡 <b>สรุป:</b> boosting แยกแยะเก่งแต่ calibrate แย่ → <b>ต้อง recalibrate ก่อนใช้เสมอ</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11 GRAPH 4: feature selection -->
+  <section class="slide">
+    <div class="gslide">
+      <img class="u" src="../outputs/analysis/figures/feature_selection_bss.png" alt="Feature selection">
+      <div class="gtext u">
+        <div class="kicker">ผล 4 · ข้อค้นพบหลัก</div>
+        <h3 class="gh">"น้อยแต่ดี" — ตัดฟีเจอร์ แล้วแม่นขึ้น</h3>
+        <div class="says">📊 กราฟนี้บอกอะไร</div>
+        <ul class="exp">
+          <li><span class="axis">เทียบจำนวนฟีเจอร์: full(20) / no_thermal(16) / lean(10) / core(5)</span></li>
+          <li>เส้นเทา full(20) <b>อยู่ล่างสุดทุกจุด</b> และหลุดต่ำกว่า 0 ที่ lead 6</li>
+          <li>ยิ่งตัดฟีเจอร์ซ้ำซ้อน เส้นยิ่งสูงขึ้น — <b>core(5) ดีสุดที่ lead ยาว</b></li>
+        </ul>
+        <div class="key">💡 <b>สรุป:</b> linear model <b>overfit ฟีเจอร์ที่ซ้ำซ้อน</b> → ความเรียบง่ายช่วยให้ generalize ดีขึ้น</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12 GRAPH 5: optimize logistic -->
+  <section class="slide">
+    <div class="gslide">
+      <img class="u" src="../outputs/analysis/figures/optimize_logistic_bss.png" alt="Optimize logistic">
+      <div class="gtext u">
+        <div class="kicker">ผล 5 · regularization vs feature selection</div>
+        <h3 class="gh">ตัดฟีเจอร์ ชนะ การ regularize</h3>
+        <div class="says">📊 กราฟนี้บอกอะไร</div>
+        <ul class="exp">
+          <li><span class="axis">เทียบ: full / full+L2 แรง / core / core+คาลิเบรต / lean+คาลิเบรต</span></li>
+          <li>L2 แรง (ม่วง) ช่วยนิดหน่อย แต่ <b>ยังสู้ core (ส้ม) ไม่ได้</b></li>
+          <li>เอา core ไป recalibrate (เขียว/น้ำเงิน) กลับ <b>แย่ลง</b> — เพราะ logistic calibrate ดีอยู่แล้ว</li>
+        </ul>
+        <div class="key">💡 <b>สรุป:</b> ผู้ชนะคือ <b>core 5 ฟีเจอร์ธรรมดา</b> ; calibration ช่วยแค่ boosting ไม่ใช่ logistic</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13 GRAPH 6: permutation importance -->
+  <section class="slide">
+    <div class="gslide">
+      <img class="u" src="../outputs/analysis/figures/permutation_importance.png" alt="Permutation importance">
+      <div class="gtext u">
+        <div class="kicker">ผล 6 · ฟีเจอร์ไหนสำคัญ</div>
+        <h3 class="gh">อะไรขับเคลื่อนการทำนาย</h3>
+        <div class="says">📊 กราฟนี้บอกอะไร</div>
+        <ul class="exp">
+          <li><span class="axis">แท่งยาว = สลับค่าฟีเจอร์นั้นแล้วสกิล "ตกมาก" = สำคัญมาก</span></li>
+          <li>ฝั่ง Logistic: <b>ฤดูกาล (doy) + ความชื้นดิน (sm)</b> นำ → ยืนยัน land–atmosphere coupling</li>
+          <li>ฝั่ง LightGBM ดิบ: แท่ง error กว้าง (เพราะ miscalibration — ตรงกับผล 3)</li>
+        </ul>
+        <div class="key">💡 <b>สรุป:</b> 3 วัตถุดิบหลัก = ฤดูกาล + เอลนีโญ + ความชื้นดิน (ตรงกับชุด core)</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 14 FINDINGS SUMMARY -->
+  <section class="slide">
+    <div class="kicker u">สรุปข้อค้นพบ</div>
+    <h2 class="u">🎉 3 ไฮไลต์</h2>
+    <div class="cards">
+      <div class="c u"><div class="ic">✅</div><h4>1 · ชนะ baseline จริง</h4><p>มีนัยสำคัญทางสถิติที่ 2–4 สัปดาห์ (กันการมองอนาคต + bootstrap)</p></div>
+      <div class="c u"><div class="ic">🌊</div><h4>2 · เอลนีโญคือกุญแจ</h4><p>เปลี่ยนความถี่ heatwave มหาศาล โมเดลเก่งสุดช่วงนี้</p></div>
+      <div class="c u"><div class="ic">🪶</div><h4>3 · น้อยแต่ดี</h4><p>core 5 ฟีเจอร์ แม่นกว่า 20 ฟีเจอร์ — parsimony ชนะ</p></div>
+    </div>
+  </section>
+
+  <!-- 15 HONESTY -->
+  <section class="slide">
+    <div class="kicker u">ความซื่อสัตย์ทางวิชาการ</div>
+    <h2 class="u">ข้อจำกัดที่เราบอกตรง ๆ</h2>
+    <p class="sub u">ยังเอาชนะ baseline <span class="em">persistence</span> แบบ "มีนัยสำคัญ" ไม่ได้
+      (ช่วงเชื่อมั่นยังกว้าง) — เป็นเรื่องปกติของการพยากรณ์หลายสัปดาห์</p>
+    <p class="sub u">การรายงานทั้ง <b>pooled + แยก fold + แยก regime + ช่วงเชื่อมั่น</b>
+      และยอมรับข้อจำกัด คือสิ่งที่ทำให้ผล <span class="emg">น่าเชื่อถือ</span> ✋</p>
+  </section>
+
+  <!-- 16 NEXT -->
+  <section class="slide">
+    <div class="kicker u">ก้าวต่อไป</div>
+    <h2 class="u">จาก "โมเดล" → "แอปจริง"</h2>
+    <p class="sub u" style="margin-bottom:4px"><span class="emg">✅ Phase 1 (โมเดล core 5 ฟีเจอร์) เสร็จและพิสูจน์แล้ว</span></p>
+    <div class="pills">
+      <div class="pill u">🔄 ระบบพยากรณ์อัตโนมัติจากข้อมูลล่าสุด</div>
+      <div class="pill u">📱 เว็บ/แอป dashboard</div>
+      <div class="pill u">🔔 ระบบแจ้งเตือนล่วงหน้า</div>
+      <div class="pill u">🚀 พอร์ต TAIEC / dek70</div>
+    </div>
+  </section>
+
+  <!-- 17 THANKS -->
+  <section class="slide">
+    <div class="sun u" style="animation-duration:4.5s"></div>
+    <h1 class="u">ขอบคุณครับ 🙏</h1>
+    <p class="sub u">คำถาม / ข้อเสนอแนะ ยินดีรับฟัง</p>
+    <p class="sub u" style="color:#7c82ab;font-size:clamp(13px,1.7vw,17px)">โค้ด: <code>scripts/analysis/</code> · ผล: <code>outputs/analysis/</code> · DeepSeek Heatwave</p>
+  </section>
+
+</div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')], N=slides.length;
+  let i=0;
+  document.getElementById('tot').textContent=N;
+  const dotsWrap=document.getElementById('dots');
+  slides.forEach((_,k)=>{const d=document.createElement('div');d.className='dot';d.onclick=()=>go(k);dotsWrap.appendChild(d);});
+  const dots=[...dotsWrap.children];
+  function go(n){
+    i=Math.max(0,Math.min(N-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('active',k===i));
+    dots.forEach((d,k)=>d.classList.toggle('on',k===i));
+    document.getElementById('cur').textContent=i+1;
+    document.getElementById('prog').style.width=(i/(N-1)*100)+'%';
+  }
+  const next=()=>go(i+1), prev=()=>go(i-1);
+  document.getElementById('next').onclick=next;
+  document.getElementById('prev').onclick=prev;
+  addEventListener('keydown',e=>{
+    if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();next();}
+    else if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();prev();}
+    else if(e.key==='Home')go(0); else if(e.key==='End')go(N-1);
+    else if(e.key==='f'||e.key==='F'){if(!document.fullscreenElement)document.documentElement.requestFullscreen();else document.exitFullscreen();}
+  });
+  let x0=null;
+  addEventListener('touchstart',e=>x0=e.touches[0].clientX,{passive:true});
+  addEventListener('touchend',e=>{if(x0==null)return;const dx=e.changedTouches[0].clientX-x0;if(Math.abs(dx)>50){dx<0?next():prev();}x0=null;},{passive:true});
+  go(0);
+</script>
+</body>
+</html>

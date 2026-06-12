@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>เข้าใจผลวิเคราะห์ Heatwave Prediction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&family=Sarabun:wght@400;600&display=swap" rel="stylesheet">
+<script>document.documentElement.classList.add('js');</script>
+<style>
+  :root{
+    --bg:#0f1020; --bg2:#181a31; --card:#1e2140; --ink:#eef0ff; --muted:#a9add4;
+    --hot:#ff6b35; --hot2:#ffb13c; --cool:#3ba7ff; --good:#36d399; --bad:#ff5d6c;
+    --green:#2ecc71; --line:#2c2f55;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:'Sarabun','Kanit',Tahoma,sans-serif; background:var(--bg); color:var(--ink);
+    line-height:1.7; overflow-x:hidden;
+  }
+  h1,h2,h3,.num{font-family:'Kanit','Sarabun',Tahoma,sans-serif}
+  .wrap{max-width:980px;margin:0 auto;padding:0 22px}
+
+  /* ---------- progress bar ---------- */
+  #prog{position:fixed;top:0;left:0;height:4px;width:0;z-index:99;
+    background:linear-gradient(90deg,var(--hot),var(--hot2));transition:width .1s}
+
+  /* ---------- hero ---------- */
+  .hero{min-height:92vh;display:flex;flex-direction:column;justify-content:center;
+    position:relative;text-align:center;padding:40px 22px;
+    background:radial-gradient(1200px 500px at 50% -10%,#3a1d12 0,transparent 60%),var(--bg)}
+  .sun{width:120px;height:120px;border-radius:50%;margin:0 auto 26px;
+    background:radial-gradient(circle at 50% 45%,#fff3b0,var(--hot2) 45%,var(--hot) 75%);
+    box-shadow:0 0 60px 14px rgba(255,107,53,.55);animation:pulse 3.6s ease-in-out infinite}
+  @keyframes pulse{0%,100%{transform:scale(1);box-shadow:0 0 60px 14px rgba(255,107,53,.45)}
+    50%{transform:scale(1.07);box-shadow:0 0 90px 26px rgba(255,140,60,.65)}}
+  .hero h1{font-size:clamp(28px,5vw,50px);font-weight:700;letter-spacing:.5px;
+    background:linear-gradient(90deg,#fff,#ffd9a0);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p{color:var(--muted);max-width:680px;margin:18px auto 0;font-size:18px}
+  .scroll-cue{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);
+    color:var(--muted);font-size:13px;animation:bob 1.8s infinite}
+  @keyframes bob{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,8px)}}
+
+  /* ---------- sections ---------- */
+  section{padding:70px 0;border-top:1px solid var(--line)}
+  .tag{display:inline-block;font-size:13px;font-weight:600;color:var(--hot2);
+    letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
+  h2{font-size:clamp(22px,3.4vw,32px);margin-bottom:8px;font-weight:600}
+  .lead{color:var(--muted);font-size:17px;margin-bottom:26px;max-width:760px}
+  .js .reveal{opacity:0;transform:translateY(34px);transition:all .7s cubic-bezier(.2,.7,.2,1)}
+  .reveal.show{opacity:1;transform:none}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:24px 26px;margin:16px 0;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+  .how{background:linear-gradient(180deg,#15223a,#14182f);border-left:4px solid var(--cool)}
+  .how h3{color:var(--cool);font-size:16px;margin-bottom:6px}
+  .mean{background:linear-gradient(180deg,#24180f,#1a1326);border-left:4px solid var(--hot2)}
+  .mean h3{color:var(--hot2);font-size:16px;margin-bottom:6px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:720px){.grid2{grid-template-columns:1fr}}
+
+  /* ---------- big number ---------- */
+  .bignum{font-size:54px;font-weight:700;line-height:1}
+  .bignum.good{color:var(--good)} .bignum.bad{color:var(--bad)} .bignum.hot{color:var(--hot2)}
+  .unit{color:var(--muted);font-size:15px}
+
+  /* ---------- bar chart ---------- */
+  .bar-row{display:flex;align-items:center;gap:12px;margin:10px 0}
+  .bar-label{flex:0 0 150px;font-size:14px;color:var(--muted);text-align:right}
+  .bar-track{flex:1;background:#0d0f22;border-radius:8px;height:30px;position:relative;overflow:hidden}
+  .bar-fill{height:100%;width:0;border-radius:8px;transition:width 1.1s cubic-bezier(.2,.8,.2,1);
+    display:flex;align-items:center;justify-content:flex-end;padding-right:8px;font-size:13px;font-weight:600;color:#06121f}
+  .show .bar-fill{width:var(--w)}
+  .b-hot{background:linear-gradient(90deg,var(--hot),var(--hot2))}
+  .b-cool{background:linear-gradient(90deg,#2b6fb0,var(--cool))}
+  .b-good{background:linear-gradient(90deg,#1f9d6b,var(--good))}
+  .b-bad{background:linear-gradient(90deg,#b0354a,var(--bad))}
+  .b-mut{background:linear-gradient(90deg,#444a73,#6b71a3)}
+
+  /* zero-centered chart for BSS */
+  .zc{position:relative;height:30px;background:#0d0f22;border-radius:8px;margin:8px 0;overflow:hidden}
+  .zc .zero{position:absolute;top:0;bottom:0;left:var(--zero,50%);width:2px;background:#555a8a;z-index:2}
+  .zc .pos,.zc .neg{position:absolute;top:0;bottom:0;width:0;transition:width 1.1s cubic-bezier(.2,.8,.2,1)}
+  .zc .pos{left:var(--zero,50%);background:linear-gradient(90deg,#1f9d6b,var(--good))}
+  .zc .neg{right:calc(100% - var(--zero,50%));background:linear-gradient(270deg,#b0354a,var(--bad))}
+  .show .zc .pos{width:var(--wp,0)} .show .zc .neg{width:var(--wn,0)}
+  .ci{position:absolute;top:50%;height:2px;background:rgba(255,255,255,.85);transform:translateY(-50%);z-index:3;opacity:0;transition:opacity .6s .9s}
+  .ci::before,.ci::after{content:"";position:absolute;top:-4px;width:2px;height:10px;background:#fff}
+  .ci::before{left:0}.ci::after{right:0}
+  .show .ci{opacity:1}
+
+  table{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px}
+  th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:center}
+  th{color:var(--hot2);font-weight:600} td:first-child,th:first-child{text-align:left}
+  .yes{color:var(--good);font-weight:700}.no{color:#6b71a3}
+  .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:600}
+  .pill.g{background:rgba(54,211,153,.16);color:var(--good)}
+  .pill.r{background:rgba(255,93,108,.16);color:var(--bad)}
+
+  /* block bootstrap demo */
+  #bbdemo{display:flex;gap:3px;flex-wrap:wrap;margin-top:8px}
+  #bbdemo .d{width:14px;height:14px;border-radius:3px;background:#272a4e;transition:background .25s,transform .25s}
+  #bbdemo .d.hot{background:var(--hot2);transform:scale(1.25)}
+
+  .key{background:linear-gradient(135deg,#3a1d12,#241433);border:1px solid #4a2a1a}
+  .footer{padding:40px 0 70px;color:var(--muted);font-size:14px;text-align:center}
+  .imgwrap{margin-top:14px}.imgwrap img{width:100%;border-radius:12px;border:1px solid var(--line)}
+  .chip{display:inline-block;background:#0d0f22;border:1px solid var(--line);border-radius:8px;
+    padding:3px 10px;font-size:13px;color:var(--muted);margin:3px 3px 0 0;font-family:'Kanit',sans-serif}
+  .em{color:var(--hot2);font-weight:600}
+  .emg{color:var(--good);font-weight:600}
+  /* กันเนื้อหาหายเวลา print/export PDF (IntersectionObserver ไม่ทำงานตอน print) */
+  @media print{
+    .js .reveal{opacity:1!important;transform:none!important}
+    .bar-fill{width:var(--w)!important}
+    .zc .pos{width:var(--wp,0)!important} .zc .neg{width:var(--wn,0)!important} .ci{opacity:1!important}
+    #prog,.scroll-cue{display:none!important}
+  }
+</style>
+</head>
+<body>
+<div id="prog"></div>
+
+<!-- ================= HERO ================= -->
+<div class="hero">
+  <div class="sun"></div>
+  <h1>เข้าใจผลวิเคราะห์<br>โมเดลทำนายคลื่นความร้อน</h1>
+  <p>คู่มือแบบเล่าเรื่อง — อธิบายว่าตัวเลขแต่ละตัว <b>มาได้ยังไง</b> และ <b>แปลว่าอะไร</b>
+     ตั้งแต่ "สกิลจริงหรือบังเอิญ?" ไปจนถึงข้อค้นพบที่พลิกความเข้าใจเดิม</p>
+  <div class="scroll-cue">▼ เลื่อนลงเพื่อเริ่ม</div>
+</div>
+
+<!-- ================= 0 BIG QUESTION ================= -->
+<section><div class="wrap reveal">
+  <span class="tag">จุดเริ่มต้น</span>
+  <h2>คำถามใหญ่: "สกิล +0.168 จริง หรือฟลุ๊ก?"</h2>
+  <p class="lead">รอบที่แล้วเราได้ผลว่าโมเดล logistic ทำคะแนน <b>BSS = +0.168</b> ที่ lead 2 สัปดาห์
+    — ดูเหมือนชนะ baseline แต่ <em class="em">"ดูเหมือน" ยังไม่พอ</em> งานรอบนี้คือพิสูจน์ว่ามันแกร่งและเชื่อถือได้จริง</p>
+  <div class="card how">
+    <h3>BSS (Brier Skill Score) คืออะไร?</h3>
+    คะแนนวัดว่าโมเดลทำนาย "ความน่าจะเป็น" ได้ดีกว่า baseline (การเดาแบบง่าย ๆ ตามค่าเฉลี่ยฤดูกาล) แค่ไหน:
+    <div style="margin-top:10px">
+      <span class="pill g">BSS &gt; 0 = ดีกว่า baseline</span>
+      <span class="pill" style="background:#2c2f55;color:#a9add4">= 0 = เท่า baseline</span>
+      <span class="pill r">&lt; 0 = แย่กว่า baseline</span>
+    </div>
+    <p style="margin-top:10px;color:var(--muted);font-size:14px">สูตร: BSS = 1 − (ความคลาดเคลื่อนของโมเดล ÷ ความคลาดเคลื่อนของ baseline)</p>
+  </div>
+</div></section>
+
+<!-- ================= 1 BOOTSTRAP / CI ================= -->
+<section><div class="wrap reveal">
+  <span class="tag">เฟส 1 · ความไม่แน่นอน</span>
+  <h2>วัด "ความมั่นใจ" ด้วย Block Bootstrap</h2>
+  <p class="lead">ตัวเลข +0.168 มาจากข้อมูลชุดเดียว ถ้าเราโชคดี/โชคร้ายล่ะ? เราจึง "สุ่มซ้ำ" ข้อมูลหลายพันครั้ง
+    เพื่อดูว่าคะแนนแกว่งแค่ไหน → ได้ <b>ช่วงความเชื่อมั่น 95% (CI)</b></p>
+
+  <div class="grid2">
+    <div class="card how">
+      <h3>ทำมายังไง?</h3>
+      ข้อมูลพยากรณ์เป็น "อนุกรมเวลา" วันที่ติดกันสัมพันธ์กันสูง → สุ่มทีละวันไม่ได้ (จะทำลายความสัมพันธ์)
+      เราจึงสุ่มเป็น <em class="em">"ก้อนวันติดกัน" ยาว 28 วัน</em> (moving-block bootstrap) ทำซ้ำ 2,000 รอบ
+      <div id="bbdemo"></div>
+      <p style="color:var(--muted);font-size:13px;margin-top:8px">▲ จุดส้ม = ก้อน 28 วันที่ถูกสุ่มในแต่ละรอบ</p>
+    </div>
+    <div class="card mean">
+      <h3>แปลว่าอะไร?</h3>
+      ถ้าช่วง CI <em class="em">ไม่คร่อมเลข 0</em> = มั่นใจว่าชนะ baseline จริง ไม่ใช่ฟลุ๊ก<br><br>
+      ถ้า CI คร่อม 0 = ยังสรุปไม่ได้ อาจเป็นแค่ความบังเอิญ
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="font-size:17px;margin-bottom:14px">ผลจริง: BSS ± ช่วง 95% (target y_rm, lead 2)</h3>
+    <div data-zero="38">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:2px">logistic</div>
+      <div class="zc" style="--zero:38%"><span class="zero"></span>
+        <span class="pos" style="--wp:16.8%"></span>
+        <span class="ci" style="left:43%;right:33%"></span></div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">+0.168 &nbsp; [+0.05, +0.29] &nbsp;<span class="emg">✓ ชนะ climatology</span></div>
+
+      <div style="font-size:13px;color:var(--muted);margin-bottom:2px">logistic_balanced_cal</div>
+      <div class="zc" style="--zero:38%"><span class="zero"></span>
+        <span class="pos" style="--wp:19.4%"></span>
+        <span class="ci" style="left:47.5%;right:32%"></span></div>
+      <div style="font-size:12px;color:var(--muted)">+0.194 &nbsp; [+0.10, +0.30] &nbsp;<span class="emg">✓✓ ชนะแม้ persistence</span></div>
+    </div>
+  </div>
+
+  <div class="card key">
+    <h3 style="font-size:17px;color:var(--hot2);margin-bottom:8px">🔑 คำตอบของคำถามใหญ่ (ละเอียดอ่อนกว่าที่คิด)</h3>
+    <p>logistic +0.168 <span class="emg">ชนะ climatology จริง</span> (CI ไม่คร่อม 0) — แต่ <em class="em">ไม่ชนะ persistence</em>
+       (baseline ที่แกร่งกว่า). ตัวที่ <span class="emg">แกร่งที่สุดคือ logistic_balanced_cal</span>
+       ที่ชนะแม้ persistence อย่างมีนัยสำคัญถึง lead 4 → <b>นี่คือโมเดลที่ควรแนะนำใช้จริง ไม่ใช่ logistic ดิบ</b></p>
+  </div>
+
+  <details class="card" style="cursor:pointer">
+    <summary style="font-weight:600;color:var(--hot2)">📋 ตารางเต็ม: ชนะ baseline ที่ lead ไหนบ้าง (q &lt; 0.05 หลังคุม false discovery)</summary>
+    <table style="margin-top:12px">
+      <tr><th>โมเดล</th><th>lead 2</th><th>lead 3</th><th>lead 4</th><th>lead 5</th><th>lead 6</th></tr>
+      <tr><td>logistic (ชนะ persist?)</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td><td class="no">·</td></tr>
+      <tr><td>lgbm_cal</td><td class="no">·</td><td class="yes">✓</td><td class="no">·</td><td class="no">·</td><td class="no">·</td></tr>
+      <tr><td>logistic_balanced_cal</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">·</td><td class="no">·</td></tr>
+    </table>
+    <p style="color:var(--muted);font-size:13px;margin-top:8px">สังเกต: สกิลชัดที่ lead 2–4 (สั้น) แล้วจางลงเมื่อ lead ยาว — เป็นธรรมชาติของการพยากรณ์ sub-seasonal</p>
+  </details>
+
+  <div class="imgwrap reveal"><img src="../outputs/analysis/figures/bss_vs_lead_ci.png" alt="BSS vs lead with 95% CI" loading="lazy"></div>
+  <p style="color:var(--muted);font-size:13px;text-align:center;margin-top:6px">รูปจริงจาก pipeline: BSS ทุก lead พร้อมแท่ง error 95%</p>
+</div></section>
+
+<!-- ================= 2 ENSO REGIME ================= -->
+<section><div class="wrap reveal">
+  <span class="tag">เฟส 2 · แยกตามสภาวะอากาศ</span>
+  <h2>ENSO: ตัวขับเคลื่อนที่พลิกความเข้าใจเดิม</h2>
+  <p class="lead">เราแบ่ง "วันออกพยากรณ์" ตามสภาวะมหาสมุทรแปซิฟิก (เอลนีโญ / ปกติ / ลานีญา)
+    จากค่า Niño3.4 ที่โมเดลเห็นจริง แล้วดูว่าโมเดลทำงานดีในสภาวะไหน</p>
+
+  <div class="card how">
+    <h3>ทำมายังไง?</h3>
+    จับวันแต่ละวันใส่กลุ่มตามค่า ENSO (anomaly ≥ +0.5°C = เอลนีโญ, ≤ −0.5 = ลานีญา) แล้วคำนวณ BSS แยกแต่ละกลุ่ม
+  </div>
+
+  <div class="card">
+    <h3 style="font-size:17px;margin-bottom:12px">ความถี่คลื่นความร้อน (base rate) ต่างกันมหาศาล — ที่ lead 2</h3>
+    <div class="bar-row"><span class="bar-label">เอลนีโญ 🔴</span>
+      <div class="bar-track"><div class="bar-fill b-hot" style="--w:89%">0.446 (เกือบครึ่งของวัน!)</div></div></div>
+    <div class="bar-row"><span class="bar-label">ปกติ ⚪</span>
+      <div class="bar-track"><div class="bar-fill b-mut" style="--w:53%">0.266</div></div></div>
+    <div class="bar-row"><span class="bar-label">ลานีญา 🔵</span>
+      <div class="bar-track"><div class="bar-fill b-cool" style="--w:10%">0.046 (หายากมาก)</div></div></div>
+    <p style="color:var(--muted);font-size:14px;margin-top:10px">→ ปีเอลนีโญ ไทยมีคลื่นความร้อนถี่ขึ้นมาก สมเหตุสมผลที่ <span class="em">nino34</span> เป็นฟีเจอร์อันดับต้น ๆ</p>
+  </div>
+
+  <div class="card">
+    <h3 style="font-size:17px;margin-bottom:12px">โมเดล (logistic) ทำงาน "ดีที่สุด" ช่วงเอลนีโญ — ไม่ใช่แย่ที่สุด</h3>
+    <div class="bar-row"><span class="bar-label">BSS · เอลนีโญ</span>
+      <div class="bar-track"><div class="bar-fill b-good" style="--w:74%">+0.221</div></div></div>
+    <div class="bar-row"><span class="bar-label">BSS · ลานีญา</span>
+      <div class="bar-track"><div class="bar-fill b-good" style="--w:57%">+0.172</div></div></div>
+    <div class="bar-row"><span class="bar-label">BSS · ปกติ</span>
+      <div class="bar-track"><div class="bar-fill b-good" style="--w:36%">+0.109</div></div></div>
+  </div>
+
+  <div class="card key">
+    <h3 style="font-size:17px;color:var(--hot2);margin-bottom:8px">🔑 แก้ความเข้าใจผิดเดิม: "ปีเอลนีโญอ่อน"</h3>
+    <p>ความจริงตรงข้าม — ช่วงเอลนีโญโมเดลแกร่งสุด เพราะ climatology (เฉลี่ยทุกปี) ทายต่ำไปในปีเอลนีโญ
+      โมเดลที่รู้จัก ENSO เลยเอาชนะได้เยอะ. ส่วน <em class="em">"fold ที่ดูอ่อน" จริง ๆ คือช่วง 2016–18</em>
+      ที่ <b>ไม่มีคลื่นความร้อนเลย (base rate = 0.000)</b> ทำให้คะแนน BSS เพี้ยน (−0.733) — เป็น
+      <span class="em">artifact ของช่วงไร้เหตุการณ์</span> ไม่ใช่ความอ่อนของโมเดล</p>
+  </div>
+  <div class="imgwrap reveal"><img src="../outputs/analysis/figures/skill_by_enso.png" alt="Skill by ENSO regime" loading="lazy"></div>
+</div></section>
+
+<!-- ================= 3 CALIBRATION ================= -->
+<section><div class="wrap reveal">
+  <span class="tag">เฟส 3 · คุณภาพความน่าจะเป็น</span>
+  <h2>ทำไม LightGBM ดิบถึง "สอบตก"?</h2>
+  <p class="lead">LightGBM แยกแยะเก่ง (AUC ดี) แต่ BSS กลับติดลบ! เราผ่า Brier ออกเป็นชิ้นส่วนเพื่อหาสาเหตุ</p>
+
+  <div class="card how">
+    <h3>Brier decomposition — ผ่าคะแนนเป็น 3 ส่วน</h3>
+    <div style="margin-top:8px">
+      <span class="chip"><b style="color:var(--bad)">REL</b> = ความน่าจะเป็น "เพี้ยน" แค่ไหน (ต่ำ = ดี)</span>
+      <span class="chip"><b style="color:var(--good)">RES</b> = แยกแยะ event/ไม่ event เก่งแค่ไหน (สูง = ดี)</span>
+      <span class="chip"><b style="color:var(--muted)">UNC</b> = ความยากของปัญหา (เท่ากันทุกโมเดล)</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="font-size:17px;margin-bottom:12px">REL (ยิ่งสั้นยิ่งดี) — y_rm lead 2</h3>
+    <div class="bar-row"><span class="bar-label">LightGBM ดิบ</span>
+      <div class="bar-track"><div class="bar-fill b-bad" style="--w:90%">0.045 ❌ เพี้ยนมาก</div></div></div>
+    <div class="bar-row"><span class="bar-label">LightGBM (Platt)</span>
+      <div class="bar-track"><div class="bar-fill b-good" style="--w:36%">0.018 ✓</div></div></div>
+    <div class="bar-row"><span class="bar-label">logistic_balanced_cal</span>
+      <div class="bar-track"><div class="bar-fill b-good" style="--w:14%">0.007 ✓ ดีสุด</div></div></div>
+    <p style="color:var(--muted);font-size:14px;margin-top:10px">
+      ปัญหาของ lgbm ดิบอยู่ที่ <em class="em">calibration (REL/ECE สูง)</em> ไม่ใช่การแยกแยะ —
+      แก้ด้วยการ "recalibrate" (Platt/Isotonic) ทำให้ REL ลด ~60%</p>
+  </div>
+
+  <div class="card mean">
+    <h3>บทเรียน</h3>
+    <em class="em">Boosting (LightGBM) ต้อง recalibrate เสมอ</em> ก่อนนำความน่าจะเป็นไปใช้จริง —
+    ทั้ง Platt และ Isotonic แก้ได้ (Platt ดีกว่าเล็กน้อยในงานนี้): จาก BSS ติดลบ −0.12 → บวก +0.14
+  </div>
+  <div class="imgwrap reveal"><img src="../outputs/analysis/figures/calibration_methods_lgbm.png" alt="Calibration methods" loading="lazy"></div>
+</div></section>
+
+<!-- ================= 4 IMPORTANCE / ABLATION ================= -->
+<section><div class="wrap reveal">
+  <span class="tag">เฟส 4–5 · อะไรขับเคลื่อนสกิล</span>
+  <h2>ฟีเจอร์ไหนสำคัญจริง?</h2>
+  <p class="lead">เราใช้ 2 วิธีตรวจสอบไขว้กัน: <b>permutation</b> (สลับค่าทีละฟีเจอร์ ดูสกิลตก)
+    และ <b>ablation</b> (ตัดทีละกลุ่ม ดู BSS เปลี่ยน)</p>
+
+  <div class="grid2">
+    <div class="card">
+      <h3 style="font-size:16px;margin-bottom:10px">Permutation (logistic, lead 2)<br><span style="font-weight:400;color:var(--muted);font-size:13px">สกิลตกเมื่อสลับฟีเจอร์</span></h3>
+      <div class="bar-row"><span class="bar-label" style="flex-basis:110px">doy (ฤดูกาล)</span>
+        <div class="bar-track"><div class="bar-fill b-hot" style="--w:95%">มากสุด</div></div></div>
+      <div class="bar-row"><span class="bar-label" style="flex-basis:110px">sm1_mean30 (ดิน)</span>
+        <div class="bar-track"><div class="bar-fill b-hot" style="--w:42%"></div></div></div>
+      <div class="bar-row"><span class="bar-label" style="flex-basis:110px">mjo_rmm1</span>
+        <div class="bar-track"><div class="bar-fill b-hot" style="--w:41%"></div></div></div>
+      <div class="bar-row"><span class="bar-label" style="flex-basis:110px">sm1_mean7 (ดิน)</span>
+        <div class="bar-track"><div class="bar-fill b-hot" style="--w:40%"></div></div></div>
+    </div>
+    <div class="card how">
+      <h3>อ่านยังไง?</h3>
+      ฤดูกาลคือตัวทำนายหลัก (คลื่นความร้อนมาตามฤดู) ตามด้วย <em class="em">ความชื้นในดิน (soil moisture)</em>
+      — ยืนยันสมมติฐาน <b>land–atmosphere coupling</b> ของวิทยานิพนธ์<br><br>
+      ส่วน ENSO ไม่ติด top แบบ pooled เพราะผลของมัน "กระจุก" อยู่ในปีเอลนีโญ (เห็นแล้วในเฟส 2)
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="font-size:17px;margin-bottom:12px">Ablation: ตัดกลุ่มฟีเจอร์แล้ว BSS เปลี่ยนเท่าไร (logistic)</h3>
+    <p style="color:var(--muted);font-size:14px;margin-bottom:10px">
+      ค่า <span style="color:var(--bad)">ติดลบ</span> = ตัดแล้วแย่ลง → กลุ่มนั้น<b>สำคัญ</b> ·
+      ค่า <span style="color:var(--good)">บวก</span> = ตัดแล้วดีขึ้น → กลุ่มนั้นเป็น<b>ภาระ</b></p>
+    <table>
+      <tr><th>ตัดกลุ่ม</th><th>lead 2</th><th>lead 4</th><th>lead 6</th><th>สรุป</th></tr>
+      <tr><td>ENSO</td><td>−0.00</td><td style="color:var(--bad)">−0.05</td><td style="color:var(--bad)">−0.03</td><td><span class="pill g">สำคัญ (lead ยาว)</span></td></tr>
+      <tr><td>SOIL (ดิน)</td><td style="color:var(--good)">+0.02</td><td style="color:var(--good)">+0.04</td><td style="color:var(--good)">+0.05</td><td><span class="pill r">ซ้ำซ้อน</span></td></tr>
+      <tr><td>THERMAL</td><td style="color:var(--good)">+0.05</td><td style="color:var(--good)">+0.05</td><td style="color:var(--good)">+0.07</td><td><span class="pill r">ซ้ำซ้อน</span></td></tr>
+    </table>
+    <p style="color:var(--muted);font-size:14px;margin-top:10px">
+      <em class="em">ค้นพบ:</em> ENSO สำคัญขึ้นเมื่อ lead ยาว (3–6) ตรงตามศาสตร์ sub-seasonal ·
+      แต่ logistic (linear) <b>overfit ฟีเจอร์ soil/thermal ที่ซ้ำซ้อน</b> → ตัดออกกลับดีขึ้น
+      → โมเดลที่ฟีเจอร์น้อยลงอาจดีกว่า (= ไอเดียงานต่อ)</p>
+  </div>
+  <div class="imgwrap reveal"><img src="../outputs/analysis/figures/permutation_importance.png" alt="Permutation importance" loading="lazy"></div>
+</div></section>
+
+<!-- ================= 5 SUMMARY ================= -->
+<section><div class="wrap reveal">
+  <span class="tag">บทสรุป</span>
+  <h2>5 สิ่งที่ได้เรียนรู้</h2>
+  <div class="card"><b class="emg">1.</b> สกิลมี<b>จริง</b>และมีนัยสำคัญที่ lead 2–4 สัปดาห์ (ช่วงสั้น) แล้วจางเมื่อ lead ยาว</div>
+  <div class="card"><b class="emg">2.</b> โมเดลที่ควรใช้จริงคือ <b class="em">logistic_balanced_cal</b> (ชนะแม้ persistence) ไม่ใช่ logistic ดิบ</div>
+  <div class="card"><b class="emg">3.</b> <b>ENSO</b> เป็นตัวขับเคลื่อนหลัก — ปีเอลนีโญคลื่นความร้อนถี่ขึ้น โมเดลทำงานดีสุด (ไม่ใช่อ่อน)</div>
+  <div class="card"><b class="emg">4.</b> LightGBM <b>ต้อง recalibrate เสมอ</b> (ปัญหาอยู่ที่ calibration ไม่ใช่การแยกแยะ)</div>
+  <div class="card"><b class="emg">5.</b> ความชื้นในดินยืนยัน <b>land–atmosphere coupling</b> · linear model อาจดีขึ้นถ้าลดฟีเจอร์ซ้ำซ้อน</div>
+
+  <div class="card key" style="margin-top:22px">
+    <h3 style="color:var(--hot2);margin-bottom:8px">ทำไมเราเชื่อผลนี้ได้?</h3>
+    ทุกตัวเลขมาจากวิธีที่ <b>กันการโกง</b>: แบ่งข้อมูลตามเวลา (ไม่ให้เห็นอนาคต), block bootstrap คุมความไม่แน่นอน,
+    คุม false discovery (BH-FDR), และตรวจ "full reproduce ตัวเลขเดิมเป๊ะ" ทุกการทดลอง
+  </div>
+</div></section>
+
+<div class="footer wrap">
+  สร้างจากผลใน <b>outputs/analysis/</b> · โค้ดวิเคราะห์ใน <b>scripts/analysis/</b> · ตารางสรุปเต็มที่ <b>results_master.md</b><br>
+  DeepSeek_Heatwave · วิทยานิพนธ์การทำนายคลื่นความร้อน sub-seasonal
+</div>
+
+<script>
+// progress bar
+const prog=document.getElementById('prog');
+addEventListener('scroll',()=>{const h=document.documentElement;
+  prog.style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight)*100)+'%';});
+
+// scroll reveal
+const io=new IntersectionObserver((es)=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('show');}),
+  {threshold:.15});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+// reveal also triggers bars/zc inside cards: observe each card too
+document.querySelectorAll('.card,.zc,.imgwrap').forEach(el=>io.observe(el));
+
+// block-bootstrap demo
+const bb=document.getElementById('bbdemo');
+const N=60; for(let i=0;i<N;i++){const d=document.createElement('div');d.className='d';bb.appendChild(d);}
+const dots=[...bb.children];
+function sweep(){
+  dots.forEach(d=>d.classList.remove('hot'));
+  // pick 3 random blocks of length L
+  const L=6;
+  for(let b=0;b<3;b++){const s=Math.floor(Math.random()*(N-L));
+    for(let k=0;k<L;k++)dots[s+k].classList.add('hot');}
+}
+let bbTimer=null;
+new IntersectionObserver((es)=>es.forEach(e=>{
+  if(e.isIntersecting&&!bbTimer){sweep();bbTimer=setInterval(sweep,900);}
+  else if(!e.isIntersecting&&bbTimer){clearInterval(bbTimer);bbTimer=null;}
+}),{threshold:.3}).observe(bb);
+</script>
+</body>
+</html>
