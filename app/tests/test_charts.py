@@ -21,3 +21,20 @@ def test_fig_bss_by_lead_empty_selection_returns_figure():
     fig = charts.fig_bss_by_lead(df, [])
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == 0
+
+
+def test_fig_enso_base_rate_has_three_regimes():
+    import plotly.graph_objects as go
+    df = dl.load_regime_bss("y_rm")
+    fig = charts.fig_enso_base_rate(df)
+    assert isinstance(fig, go.Figure)
+    # three bar traces: El Niño, Neutral, La Niña
+    assert len(fig.data) == 3
+
+
+def test_fig_enso_bss_returns_figure():
+    import plotly.graph_objects as go
+    df = dl.load_regime_bss("y_rm")
+    fig = charts.fig_enso_bss(df, ["Logistic (bal+cal)", "Climatology"])
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 3  # 3 regime groups
