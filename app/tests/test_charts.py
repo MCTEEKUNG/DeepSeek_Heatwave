@@ -38,3 +38,21 @@ def test_fig_enso_bss_returns_figure():
     fig = charts.fig_enso_bss(df, ["Logistic (bal+cal)", "Climatology"])
     assert isinstance(fig, go.Figure)
     assert len(fig.data) == 3  # 3 regime groups
+
+
+def test_fig_feature_importance_returns_figure():
+    import plotly.graph_objects as go
+    df = dl.load_permutation_importance("y_rm", "lgbm")
+    fig = charts.fig_feature_importance(df, lead=2)
+    assert isinstance(fig, go.Figure)
+    assert len(fig.data) == 1  # single horizontal bar trace
+    assert len(fig.data[0].y) > 0  # has features
+
+
+def test_fig_reliability_returns_figure():
+    import plotly.graph_objects as go
+    pred = dl.load_predictions("y_rm")
+    fig = charts.fig_reliability(pred, lead=2, models=["climatology", "logistic"])
+    assert isinstance(fig, go.Figure)
+    # perfect diagonal + one trace per model = 3 traces
+    assert len(fig.data) == 3

@@ -120,3 +120,75 @@ def fig_enso_bss(df: pd.DataFrame, selected_models: list) -> go.Figure:
         margin=dict(b=80),
     )
     return fig
+
+
+def fig_feature_importance(df: pd.DataFrame, lead: int) -> go.Figure:
+    """Horizontal bar chart of permutation feature importance at a given lead.
+
+    df: from data_loader.load_permutation_importance()
+        columns: feature, lead, mean_drop_bss, std_drop_bss, color
+    """
+    g = df[df["lead"] == lead].sort_values("mean_drop_bss", ascending=True)
+    fig = go.Figure(go.Bar(
+        x=g["mean_drop_bss"].tolist(),
+        y=g["feature"].tolist(),
+        orientation="h",
+        marker_color=g["color"].tolist(),
+        error_x=dict(
+            type="data",
+            array=g["std_drop_bss"].tolist(),
+            visible=True,
+        ),
+    ))
+    fig.update_layout(
+        title=f"Feature Importance via Permutation (LightGBM, Lead {lead} weeks)",
+        xaxis_title="Mean drop in BSS when feature shuffled (higher = more important)",
+        yaxis_title="Feature",
+        height=max(380, len(g) * 24),
+    )
+    return fig
+
+
+def fig_reliability(pred: pd.DataFrame, lead: int, models: list) -> go.Figure:
+    """Reliability diagram for selected models at a given lead time.
+
+    pred: from data_loader.load_predictions() — columns: y, p, lead, model
+    Uses evaluate.reliability_curve to bin probabilities into 10 bins.
+    """
+    from evaluate import reliability_curve  # scripts/evaluate.py
+
+    sub = pred[pred["lead"] == lead]
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=[0, 1], y=[0, 1], mode="lines",
+        line=dict(dash="dash", color="black", width=1),
+        name="Perfect calibration",
+    ))
+    _colors = {
+        "climatology": "#7f7f7f", "logistic": "#1f77b4",
+        "logistic_balanced_cal": "#0099cc", "lgbm_cal": "#2ca02c",
+        "lgbm": "#d62728", "persistence": "#bcbd22",
+    }
+    for model in models:
+        g = sub[sub["model"] == model]
+        if g.empty:
+            continue
+        mp, of, ct = reliability_curve(g["y"].to_numpy(), g["p"].to_numpy(), n_bins=10)
+        ok = ct > 0
+        color = _colors.get(model, "#888888")
+        fig.add_trace(go.Scatter(
+            x=mp[ok].tolist(), y=of[ok].tolist(),
+            mode="lines+markers",
+            name=model,
+            line=dict(color=color, width=2),
+            marker=dict(size=8),
+        ))
+    fig.update_layout(
+        title=f"Reliability Diagram (Lead {lead} weeks)",
+        xaxis_title="Forecast probability",
+        yaxis_title="Observed heatwave frequency",
+        xaxis=dict(range=[0, 1]),
+        yaxis=dict(range=[0, 1]),
+        height=450,
+    )
+    return fig
