@@ -92,14 +92,16 @@ def main() -> int:
     df = pd.read_csv(DATASET, parse_dates=["date"], index_col="date").sort_index()
     print(f"=== R1 leak gate: {PRIMARY_TARGET} | {PROD_MODEL}_cal | {len(df)} วัน ===")
     print(f"{'lead':>4} | {'BSS baked':>10} | {'BSS leakfree':>12} | {'dBSS':>8} | verdict")
-    worst = 0.0
+    deltas = []
     for lead in LEADS:
         b = pooled_bss(df, lead, leakfree=False)
         f = pooled_bss(df, lead, leakfree=True)
         d = f - b
-        worst = max(worst, abs(d))
+        deltas.append(d)
         print(f"{lead:>4} | {b:>+10.4f} | {f:>+12.4f} | {d:>+8.4f} | "
               f"{'เล็ก' if abs(d) < SCREEN_DBSS else 'ตรวจเทียบ CI'}")
+    # NaN-aware: ถ้า lead ใดคืน nan (เช่น fold ถูกข้ามหมด) ให้ worst เป็น nan ไม่ใช่ 0 ปลอม
+    worst = float(np.nanmax(np.abs(deltas))) if not all(np.isnan(deltas)) else float("nan")
     print(f"\nΔBSS สูงสุด = {worst:.4f}")
     print(f"เกณฑ์ตัดสิน: เทียบ |ΔBSS| กับครึ่งหนึ่งของ 95% CI ของ BSS ใน "
           f"outputs/analysis/results_master.md")
@@ -129,4 +131,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "test":
         _selftest()
     else:
-        main()
+        sys.exit(main())
