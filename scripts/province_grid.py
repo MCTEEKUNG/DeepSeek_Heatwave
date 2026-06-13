@@ -1,4 +1,3 @@
-# scripts/province_grid.py
 """Map 77 Thai provinces -> nearest 0.25° ERA5 grid cell + extract per-province series.
 
 centroid จาก data/provinces.csv (พอร์ตจาก Heatwave_AI) -> cell ใกล้สุดในกริด ERA5
@@ -27,8 +26,17 @@ def load_provinces(path: Path | None = None) -> pd.DataFrame:
 
 
 def _lat_lon_names(da: xr.DataArray) -> tuple[str, str]:
-    latn = "latitude" if "latitude" in da.coords else "lat"
-    lonn = "longitude" if "longitude" in da.coords else "lon"
+    """ชื่อ dim ละติจูด/ลองจิจูด (รองรับ latitude/lat, longitude/lon) — fail loudly ถ้าไม่เจอ."""
+    for latn in ("latitude", "lat"):
+        if latn in da.dims:
+            break
+    else:
+        raise KeyError(f"หา dim ละติจูดไม่เจอใน {list(da.dims)}")
+    for lonn in ("longitude", "lon"):
+        if lonn in da.dims:
+            break
+    else:
+        raise KeyError(f"หา dim ลองจิจูดไม่เจอใน {list(da.dims)}")
     return latn, lonn
 
 
@@ -54,9 +62,6 @@ if __name__ == "__main__":
         sys.stdout.reconfigure(encoding="utf-8")
     except Exception:
         pass
-    import numpy as np
-    import pandas as pd
-    import xarray as xr
 
     # 1) โหลด provinces ครบ 77 + region อยู่ในชุดที่รู้จัก
     pv = load_provinces()
