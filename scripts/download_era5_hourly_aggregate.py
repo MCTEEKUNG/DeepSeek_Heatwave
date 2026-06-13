@@ -24,6 +24,7 @@ except Exception:
     pass
 
 import cdsapi
+import numpy as np
 import xarray as xr
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -61,12 +62,15 @@ def safe_unlink(path: Path) -> None:
         pass
 
 
-def hourly_request(variable: str, year: int) -> dict:
+SECOND_HALF_MONTHS = [f"{m:02d}" for m in range(8, 13)]   # ส.ค.-ธ.ค. (ขยายเป็นทั้งปี)
+
+
+def hourly_request(variable: str, year: int, months: list[str] = HOT_MONTHS) -> dict:
     return {
         "product_type": "reanalysis",
         "variable": variable,
         "year": str(year),
-        "month": HOT_MONTHS,
+        "month": months,
         "day": ALL_DAYS,
         "time": ALL_HOURS,
         "data_format": "netcdf",
@@ -110,30 +114,102 @@ def aggregate_to_daily(hourly_path: Path, nc_var: str, how: str) -> xr.Dataset:
     return daily.to_dataset(name=nc_var)
 
 
-def main(years: list[int]) -> int:
+RECENT_DIR = RAW.parent / "raw_recent"
+RECENT_TMAX_DIR = RECENT_DIR / "tmax_thailand"
+RECENT_SOIL_DIR = RECENT_DIR / "soil_moisture_thailand"
+ERA5_LATENCY_DAYS = 6      # ERA5 ล่าช้า ~5 วัน -> เผื่อ 6 กันข้อมูลยังไม่ขึ้น
+RECENT_WINDOW_DAYS = 70    # ต้อง > 30 (sm_mean30) + เผื่อ lookback/บริบท run
+
+
+def _recent_out_dir(out_dir: Path) -> Path:
+    """แมพโฟลเดอร์เทรน -> โฟลเดอร์ raw_recent ที่ชื่อย่อยเดียวกัน."""
+    return RECENT_DIR / out_dir.name
+
+
+def download_recent(n_days: int = RECENT_WINDOW_DAYS, latency: int = ERA5_LATENCY_DAYS) -> int:
+    """ดึง ERA5 'หน้าต่างล่าสุด ~n_days วัน' เข้า raw_recent/ สำหรับ operational predict (cron).
+
+    ไม่ต้องมีข้อมูล 30 ปี — predict ใช้ climatology แช่แข็ง + หน้าต่างนี้พอ.
+    ขอเป็น 'เดือนเต็ม' ที่คาบเกี่ยวหน้าต่าง (ราย year) แล้ว aggregate + trim ให้พอดี.
+    ไฟล์ตั้งชื่อ era5_*_thailand_recent.nc (เข้า glob เดิม -> build_feature_table อ่านได้).
+    """
+    import datetime as _dt
+    import pandas as _pd
+
+    end = _pd.Timestamp(_dt.date.today()) - _pd.Timedelta(days=latency)
+    start = end - _pd.Timedelta(days=n_days)
+    window = _pd.date_range(start, end, freq="D")
+    by_year: dict[int, list[str]] = {}
+    for ts in window:
+        by_year.setdefault(ts.year, set()).add(f"{ts.month:02d}")
+    by_year = {y: sorted(ms) for y, ms in by_year.items()}
+
+    for p in (RECENT_TMAX_DIR, RECENT_SOIL_DIR, TMP_DIR):
+        p.mkdir(parents=True, exist_ok=True)
+    client = cdsapi.Client(retry_max=4)
+    print(f"=== ดึงข้อมูลล่าสุด {start.date()}..{end.date()} ({n_days} วัน) เข้า raw_recent/ ===")
+    print(f"    ปี/เดือนที่ขอ: {by_year}\n")
+
+    failed = []
+    for variable, nc_var, how, out_dir, _tpl in SPECS:
+        recent_dir = _recent_out_dir(out_dir)
+        out_file = recent_dir / f"era5_{'tmax' if nc_var == 't2m' else nc_var}_thailand_recent.nc"
+        try:
+            parts = []
+            for year, months in by_year.items():
+                tmp = TMP_DIR / f"recent_{nc_var}_{year}.nc"
+                client.retrieve(DATASET, hourly_request(variable, year, months), str(tmp))
+                parts.append(aggregate_to_daily(tmp, nc_var, how))
+                safe_unlink(tmp)
+            daily = parts[0] if len(parts) == 1 else __import__("xarray").concat(
+                parts, dim="valid_time").sortby("valid_time")
+            # trim ให้พอดีหน้าต่าง [start, end]
+            vt = daily["valid_time"]
+            daily = daily.sel(valid_time=(vt >= np.datetime64(start)) & (vt <= np.datetime64(end)))
+            daily.to_netcdf(out_file)
+            daily.close()
+            if is_valid(out_file, nc_var):
+                print(f"  [OK] {out_file.name} ({out_file.stat().st_size/1e6:.2f} MB)")
+            else:
+                print(f"  [FAIL] {nc_var} aggregate ไม่ผ่านด่านตรวจ"); failed.append(nc_var)
+        except Exception as exc:
+            print(f"  [FAIL] {nc_var}: {repr(exc)[:120]}"); failed.append(nc_var)
+
+    print(f"\n=== สรุป recent === สำเร็จ {len(SPECS)-len(failed)}/{len(SPECS)} | ล้มเหลว {failed}")
+    return 1 if failed else 0
+
+
+def main(years: list[int], months: list[str] = HOT_MONTHS, suffix: str = "") -> int:
+    """ดึง + aggregate ราย (ปี, ตัวแปร).
+
+    months/suffix: รองรับการขยายเป็นทั้งปี โดยดึง 'ครึ่งหลัง' (ส.ค.-ธ.ค.) แยกไฟล์
+    ลงท้าย _h2 (ไม่ดึง ม.ค.-ก.ค. ที่มีแล้วซ้ำ) ; ชื่อยังเข้า glob เดิม -> downstream
+    ต่อ time ให้เองด้วย open_mfdataset(by_coords). suffix="" = พฤติกรรมเดิม (ม.ค.-ก.ค.).
+    """
     for p in (TMAX_DIR, SOIL_DIR, TMP_DIR):
         p.mkdir(parents=True, exist_ok=True)
     client = cdsapi.Client(retry_max=4)  # retry ต่ำ -> ถ้าเซิร์ฟเวอร์ล่มจะ fail เร็ว ไม่ค้างยาว
 
     jobs = [(y, spec) for y in years for spec in SPECS]
-    print(f"=== ดึงชุดหลัก (hourly) + aggregate เอง : {years[0]}-{years[-1]} ม.ค.-ก.ค. ===")
+    span = f"เดือน {months[0]}-{months[-1]}" + (f" (ไฟล์{suffix})" if suffix else "")
+    print(f"=== ดึงชุดหลัก (hourly) + aggregate เอง : {years[0]}-{years[-1]} {span} ===")
     print(f"งานทั้งหมด: {len(jobs)} (={len(years)} ปี x {len(SPECS)} ตัวแปร)\n")
 
     done, skipped, failed = 0, 0, []
     for i, (year, (variable, nc_var, how, out_dir, fname_tpl)) in enumerate(jobs, 1):
-        out_file = out_dir / fname_tpl.format(year=year)
-        tag = f"[{i:3d}/{len(jobs)}] {year} {nc_var}"
+        out_file = out_dir / fname_tpl.format(year=year).replace(".nc", f"{suffix}.nc")
+        tag = f"[{i:3d}/{len(jobs)}] {year} {nc_var}{suffix}"
 
         if is_valid(out_file, nc_var):
             print(f"{tag}  ข้าม (มีไฟล์ valid แล้ว)")
             skipped += 1
             continue
 
-        tmp = TMP_DIR / f"hourly_{nc_var}_{year}.nc"
+        tmp = TMP_DIR / f"hourly_{nc_var}{suffix}_{year}.nc"
         print(f"{tag}  ดึง hourly ...", flush=True)
         t0 = time.time()
         try:
-            client.retrieve(DATASET, hourly_request(variable, year), str(tmp))
+            client.retrieve(DATASET, hourly_request(variable, year, months), str(tmp))
             daily = aggregate_to_daily(tmp, nc_var, how)
             daily.to_netcdf(out_file)
             daily.close()
@@ -157,5 +233,14 @@ def main(years: list[int]) -> int:
 
 
 if __name__ == "__main__":
-    yrs = [int(a) for a in sys.argv[1:]] if len(sys.argv) > 1 else list(range(YEAR_START, YEAR_END + 1))
+    args = sys.argv[1:]
+    # โหมด recent = ดึงหน้าต่างล่าสุดเข้า raw_recent/ (operational/cron) : python script.py recent [n_days]
+    if args and args[0] == "recent":
+        n = int(args[1]) if len(args) > 1 else RECENT_WINDOW_DAYS
+        sys.exit(download_recent(n_days=n))
+    # โหมด h2 = ครึ่งหลัง ส.ค.-ธ.ค. (ขยายเป็นทั้งปี) : python script.py h2 [years...]
+    if args and args[0] == "h2":
+        yrs = [int(a) for a in args[1:]] or list(range(YEAR_START, YEAR_END + 1))
+        sys.exit(main(yrs, months=SECOND_HALF_MONTHS, suffix="_h2"))
+    yrs = [int(a) for a in args] if args else list(range(YEAR_START, YEAR_END + 1))
     sys.exit(main(yrs))

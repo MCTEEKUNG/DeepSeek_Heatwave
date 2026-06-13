@@ -105,10 +105,14 @@ class PlattCalibrator:
         return np.log(p / (1 - p))
 
 
-def fit_predict_calibrated(name: str, X_tr, y_tr, X_te) -> np.ndarray | None:
-    """เทรนโมเดล ablation บน train ส่วนต้น + recalibrate บน block ท้าย (เว้น gap).
+def fit_calibrated_model(name: str, X_tr, y_tr):
+    """เทรนโมเดล ablation บน train ส่วนต้น + Platt calibrator บน block ท้าย (เว้น gap).
 
-    คืน None ถ้า train สั้นเกินไป หรือ calibration block มีคลาสเดียว (calibrate ไม่ได้)
+    คืน (estimator, PlattCalibrator) ที่ fit แล้ว — พร้อม serialize ใช้จริง ;
+    คืน None ถ้า train สั้นเกินไป หรือ calibration block มีคลาสเดียว (calibrate ไม่ได้).
+
+    ใช้ร่วมกันทั้ง CV (ผ่าน fit_predict_calibrated) และ production (train_final.py)
+    เพื่อให้โมเดลที่ deploy = ขั้นตอนเดียวกับที่ตัวเลข BSS อธิบาย ไม่ drift.
     """
     n = len(y_tr)
     n_calib = int(n * CALIB_FRAC)
@@ -121,6 +125,15 @@ def fit_predict_calibrated(name: str, X_tr, y_tr, X_te) -> np.ndarray | None:
     model = make_estimator(name)
     model.fit(X_tr[:n_core], y_tr[:n_core])
     cal = PlattCalibrator().fit(model.predict_proba(X_tr[n - n_calib:])[:, 1], y_cal)
+    return model, cal
+
+
+def fit_predict_calibrated(name: str, X_tr, y_tr, X_te) -> np.ndarray | None:
+    """เทรน + recalibrate แล้วทำนายบน X_te (ใช้ใน CV). คืน None ถ้า fit ไม่ได้."""
+    fitted = fit_calibrated_model(name, X_tr, y_tr)
+    if fitted is None:
+        return None
+    model, cal = fitted
     return cal.transform(model.predict_proba(X_te)[:, 1])
 
 

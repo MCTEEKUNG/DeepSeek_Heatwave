@@ -57,6 +57,8 @@ TMAX_DIR = RAW / "tmax_thailand"
 SOIL_DIR = RAW / "soil_moisture_thailand"
 INDICES_DIR = PROCESSED / "indices"
 OUT_FILE = PROCESSED / "dataset.csv"
+MODEL_DIR = Path(__file__).resolve().parent.parent / "models"
+CLIM_FILE = MODEL_DIR / "climatology.pkl"   # เกณฑ์ p90/p95 ราย doy "แช่แข็ง" สำหรับ operational
 
 LEADS = [2, 3, 4, 5, 6]          # สัปดาห์
 TARGET_WINDOW_DAYS = 7
@@ -85,11 +87,16 @@ def regional_mean(da: xr.DataArray) -> xr.DataArray:
     return da.weighted(w).mean(dim=_spatial_dims(da))
 
 
-def load_soil_regional(layer: int) -> pd.Series:
-    """โหลด soil moisture ชั้นที่กำหนด -> อนุกรมรายวันเฉลี่ยภูมิภาค (m3/m3)."""
-    files = sorted(SOIL_DIR.glob(f"era5_sm_l{layer}_thailand_*.nc"))
+def load_soil_regional(layer: int, soil_dir: Path | None = None) -> pd.Series:
+    """โหลด soil moisture ชั้นที่กำหนด -> อนุกรมรายวันเฉลี่ยภูมิภาค (m3/m3).
+
+    soil_dir: None = ใช้ SOIL_DIR (ข้อมูลเทรนทั้งหมด) ; ระบุได้สำหรับ operational
+    (ชี้ไปโฟลเดอร์ที่มีแค่ข้อมูลล่าสุด) — ใช้ทำ predict แบบไม่ต้องมี 30 ปี.
+    """
+    soil_dir = soil_dir or SOIL_DIR
+    files = sorted(soil_dir.glob(f"era5_sm_l{layer}_thailand_*.nc"))
     if not files:
-        raise FileNotFoundError(f"ไม่พบไฟล์ soil moisture ชั้น {layer} ใน {SOIL_DIR}")
+        raise FileNotFoundError(f"ไม่พบไฟล์ soil moisture ชั้น {layer} ใน {soil_dir}")
     ds = xr.open_mfdataset([str(p) for p in files], combine="by_coords")
     da = ds[f"swvl{layer}"].load()
     if "valid_time" in da.dims:
@@ -102,6 +109,26 @@ def load_soil_regional(layer: int) -> pd.Series:
     rm = regional_mean(da.sortby("time"))
     return pd.Series(rm.values, index=pd.DatetimeIndex(rm.time.values).normalize(),
                      name=f"sm{layer}")
+
+
+def save_climatology(clim: dict) -> None:
+    """เซฟเกณฑ์ p90/p95 ราย doy (regional-mean) ไว้ใช้ตอน operational predict.
+
+    pickle ปลอดภัย: สร้างเองในเครื่อง/CI (xarray DataArray ราย dayofyear ~366 ค่า).
+    """
+    import pickle
+    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    with open(CLIM_FILE, "wb") as f:
+        pickle.dump({k: v for k, v in clim.items()}, f)
+
+
+def load_climatology() -> dict:
+    """โหลดเกณฑ์ climatology ที่แช่แข็งไว้ (operational predict)."""
+    import pickle
+    if not CLIM_FILE.exists():
+        raise FileNotFoundError(f"ไม่พบ {CLIM_FILE} — รัน build_dataset.py ก่อน (มันเซฟ climatology)")
+    with open(CLIM_FILE, "rb") as f:
+        return pickle.load(f)
 
 
 def to_series(da: xr.DataArray, name: str) -> pd.Series:
@@ -177,6 +204,68 @@ def nino_lagged_daily(path: Path, dates: pd.DatetimeIndex) -> pd.Series:
 
 # ------------------------------------------------------------------- build
 
+def build_feature_table(verbose: bool = True, clim: dict | None = None,
+                        tmax_dir: Path | None = None, soil_dir: Path | None = None
+                        ) -> tuple[pd.DataFrame, pd.DataFrame, xr.DataArray, dict]:
+    """สร้าง "ตาราง feature" (ทุกวัน ไม่มี target) — single source ของ feature.
+
+    ใช้ทั้งใน build() (ตอนเทรน) และ predict.py (ตอนทำนายจริง) เพื่อรับประกันว่า
+    feature ที่โมเดลเห็นตอน serve = ตอน train เป๊ะ (จุดพังอันดับ 1 ของ pipeline ทำนาย).
+
+    clim: None = คำนวณเกณฑ์ p90/p95 ราย doy จากข้อมูลที่โหลด (เส้นทางเทรน)
+          dict {"thr90_rm","thr95_rm"} = ใช้เกณฑ์ "แช่แข็ง" จาก climatology ที่เทรนไว้
+          -> operational predict ใช้ข้อมูลแค่ ~45-60 วันล่าสุดได้ โดยเกณฑ์ไม่เพี้ยน
+    tmax_dir/soil_dir: None = โฟลเดอร์ข้อมูลเทรนเต็ม ; ระบุได้สำหรับ operational/ทดสอบ
+
+    คืน (feat, daily, t_grid, clim_out) ; clim_out = เกณฑ์ที่ใช้ (ไว้เซฟ freeze).
+    """
+    def log(msg: str) -> None:
+        if verbose:
+            print(msg, flush=True)
+
+    tmax_dir = tmax_dir or TMAX_DIR
+    files = sorted(tmax_dir.glob("era5_tmax_thailand_*.nc"))
+    if not files:
+        raise FileNotFoundError(f"ไม่พบไฟล์ Tmax ใน {tmax_dir}")
+    log(f"[feat] โหลด Tmax {len(files)} ไฟล์ ...")
+    t_grid = load_tmax_celsius(files)
+
+    t_rm = regional_mean(t_grid)
+    t_rm.attrs["units"] = "degC"
+    if clim is None:
+        log("[feat] เกณฑ์ p90/p95 ราย doy (regional-mean) ...")
+        thr90_rm = doy_window_percentile(t_rm, q=90, window=PCTL_WINDOW)
+        thr95_rm = doy_window_percentile(t_rm, q=95, window=PCTL_WINDOW)
+    else:
+        log("[feat] ใช้เกณฑ์ climatology ที่แช่แข็งไว้ (operational) ...")
+        thr90_rm, thr95_rm = clim["thr90_rm"], clim["thr95_rm"]
+    hot90_rm = hot_days(t_rm, thr90_rm)
+    hot95_rm = hot_days(t_rm, thr95_rm)
+    hw90_rm = flag_heatwaves(hot90_rm, min_len=MIN_RUN)
+    hw95_rm = flag_heatwaves(hot95_rm, min_len=MIN_RUN)
+
+    log("[feat] โหลด soil moisture ชั้น 1, 3 ...")
+    sm1 = load_soil_regional(1, soil_dir)
+    sm3 = load_soil_regional(3, soil_dir)
+
+    daily = pd.DataFrame({
+        "tmax_rm": to_series(t_rm, "tmax_rm"),
+        "hot_rm": to_series(hot90_rm.astype(float), "hot_rm"),
+        "hw_rm": to_series(hw90_rm.astype(float), "hw_rm"),
+        "hw_rm95": to_series(hw95_rm.astype(float), "hw_rm95"),
+    })
+    daily = daily.join(sm1, how="left").join(sm3, how="left")
+    n_miss_sm = int(daily[["sm1", "sm3"]].isna().sum().sum())
+    if n_miss_sm:
+        raise ValueError(f"soil moisture ไม่ครบ {n_miss_sm} ค่า — วันที่ Tmax กับ SM ไม่ตรงกัน")
+
+    log("[feat] ประกอบ features (lookback + ดัชนี) ...")
+    feat = lookback_features(daily)
+    feat = feat.join(mjo_features(INDICES_DIR / "mjo_rmm.csv"), how="left")
+    feat["nino34_lag1m"] = nino_lagged_daily(INDICES_DIR / "nino34.csv", feat.index)
+    return feat, daily, t_grid, {"thr90_rm": thr90_rm, "thr95_rm": thr95_rm}
+
+
 def build(verbose: bool = True) -> pd.DataFrame:
     def log(msg: str) -> None:
         if verbose:
@@ -184,56 +273,21 @@ def build(verbose: bool = True) -> pd.DataFrame:
 
     log("=== build_dataset: ประกอบตารางข้อมูล ===")
 
-    # --- 1) Tmax + target หลัก (regional-mean) ---
-    files = sorted(TMAX_DIR.glob("era5_tmax_thailand_*.nc"))
-    if not files:
-        raise FileNotFoundError(f"ไม่พบไฟล์ Tmax ใน {TMAX_DIR}")
-    log(f"[1/5] โหลด Tmax {len(files)} ไฟล์ ...")
-    t_grid = load_tmax_celsius(files)
+    # --- 1) features + อนุกรมภูมิภาค (single source ใช้ร่วมกับ predict.py) ---
+    feat, daily, t_grid, clim_out = build_feature_table(verbose=verbose)
+    save_climatology(clim_out)
 
-    t_rm = regional_mean(t_grid)
-    t_rm.attrs["units"] = "degC"
-    log("      เกณฑ์ p90/p95 ราย doy (regional-mean) ...")
-    thr90_rm = doy_window_percentile(t_rm, q=90, window=PCTL_WINDOW)
-    thr95_rm = doy_window_percentile(t_rm, q=95, window=PCTL_WINDOW)
-    hot90_rm = hot_days(t_rm, thr90_rm)
-    hot95_rm = hot_days(t_rm, thr95_rm)
-    hw90_rm = flag_heatwaves(hot90_rm, min_len=MIN_RUN)
-    hw95_rm = flag_heatwaves(hot95_rm, min_len=MIN_RUN)
-
-    # --- 2) target รอง (area-fraction รายเซลล์) ---
-    log("[2/5] เกณฑ์ p90 ราย doy ต่อเซลล์ (ช้าสุดในไฟล์นี้ ~นาที) ...")
+    # --- 2) target รอง (area-fraction รายเซลล์ — build() เท่านั้น) ---
+    log("[af] เกณฑ์ p90 ราย doy ต่อเซลล์ (ช้าสุดในไฟล์นี้ ~นาที) ...")
     thr90_cell = doy_window_percentile(t_grid, q=90, window=PCTL_WINDOW)
     hw_cell = flag_heatwaves(hot_days(t_grid, thr90_cell), min_len=MIN_RUN)
     area_frac = hw_cell.mean(dim=_spatial_dims(hw_cell))
     hw_af = (area_frac >= AF_THRESHOLD)
+    daily["area_frac"] = to_series(area_frac, "area_frac")
+    daily["hw_af"] = to_series(hw_af.astype(float), "hw_af")
 
-    # --- 3) soil moisture ---
-    log("[3/5] โหลด soil moisture ชั้น 1, 3 ...")
-    sm1 = load_soil_regional(1)
-    sm3 = load_soil_regional(3)
-
-    daily = pd.DataFrame({
-        "tmax_rm": to_series(t_rm, "tmax_rm"),
-        "hot_rm": to_series(hot90_rm.astype(float), "hot_rm"),
-        "hw_rm": to_series(hw90_rm.astype(float), "hw_rm"),
-        "hw_rm95": to_series(hw95_rm.astype(float), "hw_rm95"),
-        "area_frac": to_series(area_frac, "area_frac"),
-        "hw_af": to_series(hw_af.astype(float), "hw_af"),
-    })
-    daily = daily.join(sm1, how="left").join(sm3, how="left")
-    n_miss_sm = int(daily[["sm1", "sm3"]].isna().sum().sum())
-    if n_miss_sm:
-        raise ValueError(f"soil moisture ไม่ครบ {n_miss_sm} ค่า — วันที่ Tmax กับ SM ไม่ตรงกัน")
-
-    # --- 4) features ---
-    log("[4/5] ประกอบ features (lookback + ดัชนี) ...")
-    feat = lookback_features(daily)
-    feat = feat.join(mjo_features(INDICES_DIR / "mjo_rmm.csv"), how="left")
-    feat["nino34_lag1m"] = nino_lagged_daily(INDICES_DIR / "nino34.csv", feat.index)
-
-    # --- 5) targets ---
-    log("[5/5] targets ราย lead ...")
+    # --- 3) targets ราย lead ---
+    log("[tgt] targets ราย lead ...")
     targets = {}
     for name, flag in (("y_rm", daily["hw_rm"]), ("y_rm95", daily["hw_rm95"]),
                        ("y_af", daily["hw_af"])):
