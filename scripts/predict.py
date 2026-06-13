@@ -277,8 +277,9 @@ def _selftest() -> None:
                 shutil.copy(p, ts_ / p.name)
             feat_op, _d, _g, _c = build_feature_table(verbose=False, clim=clim,
                                                       tmax_dir=tt, soil_dir=ts_)
-        # เทียบเฉพาะวัน "ภายใน" (ตัด 7 วันท้าย = ขอบ window ที่ in_hw_today ต่างได้)
-        idx_in = feat_op.dropna(subset=FEATURES).index[:-7]
+        # R2 แก้แล้ว: in_hw_today เป็น trailing-only -> วันล่าสุด serve-consistent
+        # ไม่ต้องตัด 7 วันท้ายอีก (เดิมตัดเพราะ in_hw_today มองอนาคตที่ขอบ window)
+        idx_in = feat_op.dropna(subset=FEATURES).index
         common2 = idx_in.intersection(ds.index)
         assert len(common2) > 30, f"วันร่วม operational น้อย: {len(common2)}"
         ao = feat_op.loc[common2, FEATURES].to_numpy(dtype=float)
