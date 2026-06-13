@@ -49,6 +49,7 @@ from heatwave_target import (
     doy_window_percentile,
     hot_days,
     flag_heatwaves,
+    trailing_run_length,
 )
 
 RAW = Path(__file__).resolve().parent.parent / "data" / "raw"
@@ -172,7 +173,12 @@ def lookback_features(daily: pd.DataFrame) -> pd.DataFrame:
     f["tmax_rm"] = d["tmax_rm"]
     f["tmax_mean7"] = d["tmax_rm"].rolling(7, min_periods=7).mean()
 
-    f["in_hw_today"] = d["hw_rm"]
+    # in_hw_today (trailing-only, leak-free): อยู่ใน hot-streak ติดต่อกัน >= MIN_RUN ที่จบ ณ วันนี้
+    # ใช้ hot_rm (same-day, ไม่มองอนาคต) ไม่ใช่ hw_rm (fwd+bwd = ใช้ทำ label เท่านั้น)
+    streak = trailing_run_length(d["hot_rm"].to_numpy())
+    in_hw = pd.Series(streak >= MIN_RUN, index=full).astype(float)
+    in_hw[d["hot_rm"].isna()] = np.nan      # วันไม่มีข้อมูล -> NaN (สอดคล้องกับ feature อื่น)
+    f["in_hw_today"] = in_hw
     f["hot_frac7"] = d["hot_rm"].rolling(7, min_periods=7).mean()
 
     doy = pd.Series(full.dayofyear, index=full, dtype=float)
@@ -381,6 +387,23 @@ def _selftest() -> None:
     finally:
         tmp.unlink(missing_ok=True)
     print("[OK] Niño3.4 lag 1 เดือนถูกต้อง")
+
+    # 6) in_hw_today (trailing) มองย้อนหลังเท่านั้น + ติด 1 ที่ "วันที่ 3" ของ streak
+    idxc = pd.date_range("2020-01-01", periods=20, freq="D")
+    hot = pd.Series(0.0, index=idxc)
+    hot.iloc[5:8] = 1.0  # ร้อน 3 วันติด (index 5,6,7)
+    daily_c = pd.DataFrame({"sm1": 0.30, "sm3": 0.35, "tmax_rm": 30.0,
+                            "hot_rm": hot, "hw_rm": 0.0}, index=idxc)
+    fa = lookback_features(daily_c)
+    inhw_a = fa["in_hw_today"].to_numpy()
+    assert inhw_a[7] == 1.0 and inhw_a[6] == 0.0 and inhw_a[5] == 0.0, inhw_a[:9].tolist()
+    # เปลี่ยน "อนาคต" (index 8,9) ให้ร้อนต่อ -> in_hw ของ index <= 7 ต้องไม่ขยับ (leak-free)
+    daily_d = daily_c.copy()
+    daily_d.loc[idxc[8:10], "hot_rm"] = 1.0
+    fb = lookback_features(daily_d)
+    assert np.array_equal(inhw_a[:8], fb["in_hw_today"].to_numpy()[:8]), \
+        "in_hw_today leak: ค่าอนาคตกระทบอดีต"
+    print("[OK] in_hw_today trailing-only: ติด 1 ที่วันที่ 3 ของ streak, อนาคตไม่กระทบอดีต")
 
     print("[OK] self-test ผ่านทั้งหมด")
 
