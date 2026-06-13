@@ -1,0 +1,78 @@
+id,code,name_th,name_en,region,lat,lon
+1,BKK,กรุงเทพมหานคร,Bangkok,Central,13.7563,100.5018
+2,SPK,สมุทรปราการ,Samut Prakan,Central,13.5990,100.5998
+3,NBI,นนทบุรี,Nonthaburi,Central,13.8591,100.5217
+4,PTE,ปทุมธานี,Pathum Thani,Central,14.0208,100.5250
+5,AYA,พระนครศรีอยุธยา,Phra Nakhon Si Ayutthaya,Central,14.3692,100.5877
+6,ATG,อ่างทอง,Ang Thong,Central,14.5896,100.4550
+7,LRI,ลพบุรี,Lopburi,Central,14.7995,100.6534
+8,SBR,สิงห์บุรี,Sing Buri,Central,14.8907,100.3967
+9,CNT,ชัยนาท,Chai Nat,Central,15.1851,100.1251
+10,SRI,สระบุรี,Saraburi,Central,14.5289,100.9101
+11,NYK,นครนายก,Nakhon Nayok,Central,14.2069,101.2130
+12,NPT,นครปฐม,Nakhon Pathom,Central,13.8196,100.0645
+13,SKN,สมุทรสาคร,Samut Sakhon,Central,13.5475,100.2746
+14,SKM,สมุทรสงคราม,Samut Songkhram,Central,13.4099,100.0023
+15,CBI,ชลบุรี,Chon Buri,East,13.3611,100.9847
+16,RYG,ระยอง,Rayong,East,12.6814,101.2789
+17,CTI,จันทบุรี,Chanthaburi,East,12.6113,102.1039
+18,TRT,ตราด,Trat,East,12.2428,102.5177
+19,CCO,ฉะเชิงเทรา,Chachoengsao,East,13.6904,101.0779
+20,PRI,ปราจีนบุรี,Prachin Buri,East,14.0509,101.3700
+21,SKW,สระแก้ว,Sa Kaeo,East,13.8240,102.0645
+22,CNX,เชียงใหม่,Chiang Mai,North,18.7883,98.9853
+23,LPN,ลำพูน,Lamphun,North,18.5743,99.0087
+24,LPG,ลำปาง,Lampang,North,18.2888,99.4908
+25,UTT,อุตรดิตถ์,Uttaradit,North,17.6200,100.0993
+26,PRE,แพร่,Phrae,North,18.1445,100.1405
+27,NAN,น่าน,Nan,North,18.7756,100.7730
+28,PYO,พะเยา,Phayao,North,19.1664,99.9003
+29,CRI,เชียงราย,Chiang Rai,North,19.9105,99.8406
+30,MSN,แม่ฮ่องสอน,Mae Hong Son,North,19.3020,97.9654
+31,NSN,นครสวรรค์,Nakhon Sawan,North,15.7047,100.1372
+32,UTI,อุทัยธานี,Uthai Thani,North,15.3835,100.0246
+33,KPT,กำแพงเพชร,Kamphaeng Phet,North,16.4828,99.5226
+34,TAK,ตาก,Tak,North,16.8839,99.1258
+35,STI,สุโขทัย,Sukhothai,North,17.0070,99.8265
+36,PLK,พิษณุโลก,Phitsanulok,North,16.8211,100.2659
+37,PCT,พิจิตร,Phichit,North,16.4429,100.3487
+38,PNB,เพชรบูรณ์,Phetchabun,North,16.4190,101.1591
+39,NMA,นครราชสีมา,Nakhon Ratchasima,Northeast,14.9799,102.0978
+40,BRM,บุรีรัมย์,Buriram,Northeast,14.9930,103.1029
+41,SRN,สุรินทร์,Surin,Northeast,14.8820,103.4960
+42,SSK,ศรีสะเกษ,Sisaket,Northeast,15.1186,104.3220
+43,UBN,อุบลราชธานี,Ubon Ratchathani,Northeast,15.2448,104.8473
+44,YST,ยโสธร,Yasothon,Northeast,15.7942,104.1452
+45,CPM,ชัยภูมิ,Chaiyaphum,Northeast,15.8068,102.0317
+46,ACR,อำนาจเจริญ,Amnat Charoen,Northeast,15.8657,104.6258
+47,BKN,บึงกาฬ,Bueng Kan,Northeast,18.3609,103.6465
+48,NBP,หนองบัวลำภู,Nong Bua Lamphu,Northeast,17.2041,102.4260
+49,KKN,ขอนแก่น,Khon Kaen,Northeast,16.4419,102.8360
+50,UDN,อุดรธานี,Udon Thani,Northeast,17.4138,102.7870
+51,LEI,เลย,Loei,Northeast,17.4860,101.7223
+52,NKI,หนองคาย,Nong Khai,Northeast,17.8783,102.7420
+53,MKM,มหาสารคาม,Maha Sarakham,Northeast,16.1850,103.3022
+54,RET,ร้อยเอ็ด,Roi Et,Northeast,16.0538,103.6520
+55,KSN,กาฬสินธุ์,Kalasin,Northeast,16.4314,103.5059
+56,SNK,สกลนคร,Sakon Nakhon,Northeast,17.1545,104.1348
+57,NPM,นครพนม,Nakhon Phanom,Northeast,17.3920,104.7690
+58,MDH,มุกดาหาร,Mukdahan,Northeast,16.5420,104.7210
+59,KRI,กาญจนบุรี,Kanchanaburi,West,14.0227,99.5328
+60,SPB,สุพรรณบุรี,Suphan Buri,West,14.4745,100.1177
+61,RBR,ราชบุรี,Ratchaburi,West,13.5283,99.8134
+62,PBI,เพชรบุรี,Phetchaburi,West,13.1119,99.9399
+63,PKN,ประจวบคีรีขันธ์,Prachuap Khiri Khan,West,11.8126,99.7957
+64,NRT,นครศรีธรรมราช,Nakhon Si Thammarat,South,8.4304,99.9631
+65,KBI,กระบี่,Krabi,South,8.0863,98.9063
+66,PNA,พังงา,Phang Nga,South,8.4509,98.5256
+67,HKT,ภูเก็ต,Phuket,South,7.8804,98.3923
+68,SNI,สุราษฎร์ธานี,Surat Thani,South,9.1382,99.3217
+69,RNG,ระนอง,Ranong,South,9.9528,98.6085
+70,CPN,ชุมพร,Chumphon,South,10.4930,99.1800
+71,SKA,สงขลา,Songkhla,South,7.1896,100.5945
+72,STN,สตูล,Satun,South,6.6238,100.0673
+73,TRG,ตรัง,Trang,South,7.5563,99.6114
+74,PLG,พัทลุง,Phatthalung,South,7.6167,100.0742
+75,PTN,ปัตตานี,Pattani,South,6.8692,101.2550
+76,YLA,ยะลา,Yala,South,6.5413,101.2803
+77,NWT,นราธิวาส,Narathiwat,South,6.4254,101.8253
