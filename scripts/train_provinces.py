@@ -74,15 +74,18 @@ def run_lead(df, lead, verbose=True):
                                    tr[col].to_numpy(float), te[FEATURES_P].to_numpy(float))
         if p is None:
             continue
-        p_clim, _p_pers = _baseline_by_province(tr, te, col)
+        p_clim, p_pers = _baseline_by_province(tr, te, col)
         block = te[["province_id", "date", col]].copy()
         block["p"] = p
         block["p_clim"] = p_clim
+        block["p_pers"] = p_pers
         preds.append(block)
-    pred = pd.concat(preds, ignore_index=True).dropna(subset=["p_clim"])
+    pred = pd.concat(preds, ignore_index=True).dropna(subset=["p_clim", "p_pers"])
     pooled = evaluate_probabilistic(pred[col].to_numpy(), pred["p"].to_numpy(),
                                     baseline_prob=pred["p_clim"].to_numpy())
     pooled = {"lead": lead, **pooled}
+    pooled["bss_vs_persist"] = brier_skill_score(pred[col].to_numpy(), pred["p"].to_numpy(),
+                                                 baseline_prob=pred["p_pers"].to_numpy())
     rows = []
     for pid, g in pred.groupby("province_id"):
         n = len(g)
@@ -93,6 +96,8 @@ def run_lead(df, lead, verbose=True):
     per_prov = pd.DataFrame(rows)
     if verbose:
         print(f"  lead {lead}: n={len(pred)}, pooled BSS={pooled['bss']:+.3f}, AUC={pooled['auc']:.3f}", flush=True)
+    pred = pred.rename(columns={col: "y"})
+    pred["lead"] = lead
     return pooled, per_prov, pred
 
 
@@ -101,14 +106,17 @@ def main() -> int:
     ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
     print(f"=== train_provinces: {len(df)} แถว | {PROD_MODEL}_cal | leads={LEADS} ===")
     pooled_rows, per_prov_all = [], []
+    all_preds = []
     for lead in LEADS:
-        pooled, per_prov, _pred = run_lead(df, lead)
+        pooled, per_prov, pred = run_lead(df, lead)
         pooled_rows.append(pooled)
         per_prov_all.append(per_prov)
+        all_preds.append(pred[["province_id", "date", "lead", "y", "p", "p_clim", "p_pers"]])
     pooled_df = pd.DataFrame(pooled_rows)
     per_prov_df = pd.concat(per_prov_all, ignore_index=True)
     pooled_df.to_csv(ANALYSIS_DIR / "provinces_pooled_bss.csv", index=False)
     per_prov_df.to_csv(ANALYSIS_DIR / "provinces_per_province_bss.csv", index=False)
+    pd.concat(all_preds, ignore_index=True).to_csv(ANALYSIS_DIR / "provinces_predictions.csv", index=False)
     n_win = int((pooled_df["bss"] > 0).sum())
     print(f"\npooled BSS>0: {n_win}/{len(LEADS)} leads")
     print(pooled_df.round(3).to_string(index=False))
