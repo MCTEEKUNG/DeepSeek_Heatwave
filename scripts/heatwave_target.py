@@ -93,7 +93,7 @@ def flag_heatwaves(hot_bool: xr.DataArray, min_len: int = 3) -> xr.DataArray:
                         dims=hot_bool.transpose("time", ...).dims, name="heatwave")
 
 
-def trailing_run_length(hot_bool) -> np.ndarray:
+def trailing_run_length(hot_bool: np.ndarray) -> np.ndarray:
     """ความยาว run ของ "วันร้อน" ที่ต่อเนื่องและ **จบ ณ ตำแหน่งนั้น** (มองเฉพาะ index <= t).
 
     รับ 1D (array/Series ของ 0/1/NaN) คืน np.ndarray ความยาวเท่ากัน.
@@ -133,9 +133,11 @@ if __name__ == "__main__":
     got_run = trailing_run_length(seq2)
     assert (got_run == exp_run).all(), got_run.tolist()
     # in_hw (trailing >= 3): ติด 1 ตั้งแต่ "วันที่ 3" ของ streak เป็นต้นไป (ไม่ย้อนติดให้ 2 วันแรก)
-    assert ((exp_run >= 3).astype(int).tolist()
-            == [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1])
-    print("  [OK] trailing_run_length + in_hw(trailing>=3) ถูกต้อง\n")
+    assert (got_run >= 3).astype(int).tolist() == [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1]
+    # NaN ตัด streak เหมือน 0 (ตามที่ docstring ระบุ — กันใช้ค่าที่ไม่รู้)
+    got_nan = trailing_run_length(np.array([1.0, np.nan, 1.0, 1.0]))
+    assert got_nan.tolist() == [1.0, 0.0, 1.0, 2.0], got_nan.tolist()
+    print("  [OK] trailing_run_length + in_hw(trailing>=3) + NaN reset ถูกต้อง\n")
 
     # --- ถ้ามีไฟล์ปีจริงแล้ว สาธิต climatology + heatwave จริง ---
     ddir = Path(__file__).resolve().parent.parent / "data" / "raw" / "tmax_thailand"
