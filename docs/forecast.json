@@ -5,7 +5,7 @@
   "model": "logistic_balanced_cal",
   "issue_date": "2026-05-31",
   "data_through": "2026-05-31",
-  "generated_at": "2026-06-13T02:53:14.924638+00:00",
+  "generated_at": "2026-06-13T02:59:25.603381+00:00",
   "note": "ความน่าจะเป็น calibrated แล้ว ; เทียบ climatology_base_rate เพื่อดู 'สูง/ต่ำกว่าปกติ'",
   "warnings": [
     "ข้อมูล MJO ไม่อัปเดตถึงวันออกพยากรณ์ — ใช้ค่า MJO กลางแทน (MJO มีผลต่อความแม่นยำน้อย แต่ผลอาจคลาดเคลื่อนเล็กน้อย)"
@@ -15,9 +15,9 @@
       "lead_weeks": 2,
       "valid_from": "2026-06-14",
       "valid_to": "2026-06-20",
-      "probability": 0.3231,
+      "probability": 0.2654,
       "climatology_base_rate": 0.136,
-      "ratio_vs_normal": 2.37,
+      "ratio_vs_normal": 1.95,
       "risk_level_th": "สูง",
       "risk_level_en": "Elevated",
       "in_training_domain": true
@@ -26,9 +26,9 @@
       "lead_weeks": 3,
       "valid_from": "2026-06-21",
       "valid_to": "2026-06-27",
-      "probability": 0.3129,
+      "probability": 0.2659,
       "climatology_base_rate": 0.1361,
-      "ratio_vs_normal": 2.3,
+      "ratio_vs_normal": 1.95,
       "risk_level_th": "สูง",
       "risk_level_en": "Elevated",
       "in_training_domain": true
@@ -37,33 +37,33 @@
       "lead_weeks": 4,
       "valid_from": "2026-06-28",
       "valid_to": "2026-07-04",
-      "probability": 0.3412,
+      "probability": 0.3036,
       "climatology_base_rate": 0.1362,
-      "ratio_vs_normal": 2.5,
-      "risk_level_th": "สูงมาก",
-      "risk_level_en": "High",
+      "ratio_vs_normal": 2.23,
+      "risk_level_th": "สูง",
+      "risk_level_en": "Elevated",
       "in_training_domain": true
     },
     {
       "lead_weeks": 5,
       "valid_from": "2026-07-05",
       "valid_to": "2026-07-11",
-      "probability": 0.3842,
+      "probability": 0.3365,
       "climatology_base_rate": 0.1363,
-      "ratio_vs_normal": 2.82,
-      "risk_level_th": "สูงมาก",
-      "risk_level_en": "High",
+      "ratio_vs_normal": 2.47,
+      "risk_level_th": "สูง",
+      "risk_level_en": "Elevated",
       "in_training_domain": true
     },
     {
       "lead_weeks": 6,
       "valid_from": "2026-07-12",
       "valid_to": "2026-07-18",
-      "probability": 0.3991,
+      "probability": 0.3343,
       "climatology_base_rate": 0.1364,
-      "ratio_vs_normal": 2.93,
-      "risk_level_th": "สูงมาก",
-      "risk_level_en": "High",
+      "ratio_vs_normal": 2.45,
+      "risk_level_th": "สูง",
+      "risk_level_en": "Elevated",
       "in_training_domain": true
     }
   ]

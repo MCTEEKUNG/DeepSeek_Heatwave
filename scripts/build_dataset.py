@@ -275,6 +275,10 @@ def build(verbose: bool = True) -> pd.DataFrame:
 
     # --- 1) features + อนุกรมภูมิภาค (single source ใช้ร่วมกับ predict.py) ---
     feat, daily, t_grid, clim_out = build_feature_table(verbose=verbose)
+    # ค่าเฉลี่ย MJO (climatology) — operational ใช้ impute เมื่อ MJO ไม่อัปเดต
+    # (ป้อนค่าเฉลี่ย ไม่ใช่ 0 เพราะ amp เป็นบวกเสมอ -> 0 จะ bias prob เป็นระบบ)
+    clim_out["mjo_means"] = {c: float(feat[c].mean())
+                             for c in ["mjo_rmm1", "mjo_rmm2", "mjo_amp", "mjo_sin", "mjo_cos"]}
     save_climatology(clim_out)
 
     # --- 2) target รอง (area-fraction รายเซลล์ — build() เท่านั้น) ---
