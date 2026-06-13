@@ -77,6 +77,26 @@ def load_artifact(lead: int) -> dict:
         return pickle.load(f)
 
 
+MJO_FEATURES = ["mjo_rmm1", "mjo_rmm2", "mjo_amp", "mjo_sin", "mjo_cos"]
+
+
+def impute_neutral_mjo(feat: pd.DataFrame):
+    """operational: เติม 'MJO กลาง' (ไม่มีสัญญาณ active) ในแถวที่ MJO หาย แต่ feature อื่นครบ.
+
+    เหตุผล: แหล่ง MJO (BoM) อาจล่าช้า/หยุดอัปเดตเป็นช่วง (เจอจริง: ค้างที่ ก.พ.2024)
+    -> ทำให้ predict ของวันล่าสุดพังทั้งที่ feature อื่นครบ. MJO มีส่วนช่วย skill น้อยมาก
+    (ablation drop_MJO ~ -0.009 BSS เทียบ SOIL -0.030) จึงเติมค่ากลาง (amp=0=ไม่มี MJO)
+    + เตือนผู้ใช้ ดีกว่าไม่ออกพยากรณ์เลย. คืน (feat, set ของวันที่ถูกเติม).
+    """
+    other = [c for c in FEATURES if c not in MJO_FEATURES]
+    target = feat[MJO_FEATURES].isna().any(axis=1) & feat[other].notna().all(axis=1)
+    dates = set(feat.index[target])
+    if dates:
+        feat = feat.copy()
+        feat.loc[target, MJO_FEATURES] = 0.0
+    return feat, dates
+
+
 def latest_feature_row(feat: pd.DataFrame) -> pd.Series:
     """แถว feature ของ 'วันออกพยากรณ์ล่าสุด' ที่ feature ครบทุกตัว (มีข้อมูลย้อนหลังพอ)."""
     valid = feat[FEATURES].dropna()
@@ -99,6 +119,9 @@ def build_forecast(issue_date: str | None = None, operational: bool = False) -> 
         clim = tmax_dir = soil_dir = None
     feat, _daily, _grid, _clim = build_feature_table(
         verbose=False, clim=clim, tmax_dir=tmax_dir, soil_dir=soil_dir)
+    mjo_imputed_dates = set()
+    if operational:
+        feat, mjo_imputed_dates = impute_neutral_mjo(feat)
     if issue_date is None:
         row = latest_feature_row(feat)
     else:
@@ -114,6 +137,11 @@ def build_forecast(issue_date: str | None = None, operational: bool = False) -> 
     issue_doy = int(issue_date_ts.dayofyear)
     forecasts = []
     warnings_out = []
+    if issue_date_ts in mjo_imputed_dates:
+        warnings_out.append(
+            "ข้อมูล MJO ไม่อัปเดตถึงวันออกพยากรณ์ — ใช้ค่า MJO กลางแทน "
+            "(MJO มีผลต่อความแม่นยำน้อย แต่ผลอาจคลาดเคลื่อนเล็กน้อย)"
+        )
     model_name = None
     for lead in LEADS:
         art = load_artifact(lead)

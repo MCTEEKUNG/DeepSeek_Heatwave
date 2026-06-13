@@ -151,9 +151,11 @@ def download_recent(n_days: int = RECENT_WINDOW_DAYS, latency: int = ERA5_LATENC
     print(f"    ปี/เดือนที่ขอ: {by_year}\n")
 
     failed = []
-    for variable, nc_var, how, out_dir, _tpl in SPECS:
+    for variable, nc_var, how, out_dir, fname_tpl in SPECS:
         recent_dir = _recent_out_dir(out_dir)
-        out_file = recent_dir / f"era5_{'tmax' if nc_var == 't2m' else nc_var}_thailand_recent.nc"
+        # ใช้ template เดียวกับไฟล์เทรน (year="recent") -> ชื่อเข้า glob ของ loader เป๊ะ
+        # เช่น era5_tmax_thailand_recent.nc, era5_sm_l1_thailand_recent.nc
+        out_file = recent_dir / fname_tpl.format(year="recent")
         try:
             parts = []
             for year, months in by_year.items():
@@ -161,11 +163,10 @@ def download_recent(n_days: int = RECENT_WINDOW_DAYS, latency: int = ERA5_LATENC
                 client.retrieve(DATASET, hourly_request(variable, year, months), str(tmp))
                 parts.append(aggregate_to_daily(tmp, nc_var, how))
                 safe_unlink(tmp)
-            daily = parts[0] if len(parts) == 1 else __import__("xarray").concat(
-                parts, dim="valid_time").sortby("valid_time")
-            # trim ให้พอดีหน้าต่าง [start, end]
-            vt = daily["valid_time"]
-            daily = daily.sel(valid_time=(vt >= np.datetime64(start)) & (vt <= np.datetime64(end)))
+            daily = parts[0] if len(parts) == 1 else xr.concat(parts, dim="valid_time")
+            daily = daily.sortby("valid_time")
+            # trim ให้พอดีหน้าต่าง [start, end] — slice บน coord ที่เรียงแล้ว (label-based)
+            daily = daily.sel(valid_time=slice(np.datetime64(start), np.datetime64(end)))
             daily.to_netcdf(out_file)
             daily.close()
             if is_valid(out_file, nc_var):

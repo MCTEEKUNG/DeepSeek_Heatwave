@@ -51,6 +51,7 @@
           font-size:11px; color:var(--ink-dim); padding-top:4px; white-space:nowrap; }
   .dot { width:8px; height:8px; border-radius:50%; background:var(--low);
          box-shadow:0 0 0 0 rgba(39,199,154,.6); animation:pulse 2.4s infinite; }
+  .dot.demo { background:var(--ink-faint); box-shadow:none; animation:none; }
   @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(39,199,154,.5);} 70%{box-shadow:0 0 0 9px rgba(39,199,154,0);} 100%{box-shadow:0 0 0 0 rgba(39,199,154,0);} }
 
   /* ---- hero ---- */
@@ -174,7 +175,14 @@ const fmtShort = iso => { const [,m,d]=iso.split("-").map(Number); return `${d}/
 function riskOf(en){ return RISK[en] || RISK.Normal; }
 
 function render(fc){
-  document.getElementById("updated").textContent = "อัปเดต " + fmtTH(fc.issue_date);
+  // ถ้าพยากรณ์เก่ากว่า ~3 สัปดาห์ = ยังไม่มี cron สด -> แสดงเป็น "ตัวอย่าง" ไม่ใช่ live
+  const ageDays = Math.round((Date.now() - Date.parse(fc.issue_date)) / 86400000);
+  const liveEl = document.querySelector(".live");
+  if (ageDays > 21) {
+    liveEl.innerHTML = `<span class="dot demo"></span><span>ตัวอย่าง · ข้อมูลถึง ${fmtTH(fc.data_through)}</span>`;
+  } else {
+    document.getElementById("updated").textContent = "อัปเดต " + fmtTH(fc.issue_date);
+  }
 
   const lead2 = fc.forecasts[0];
   const r2 = riskOf(lead2.risk_level_en);
