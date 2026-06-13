@@ -68,6 +68,14 @@ pip install -r requirements.txt
 - [x] `build_dataset.py` — 6,367 วันออกพยากรณ์, 20 features, target 3 นิยาม × lead 2–6 สัปดาห์
 - [x] `train.py` — rolling-origin CV (gap 49 วัน) + recalibration (Platt บน block แยกตามเวลา) + ประเมินผล
 
+## สถานะ (2026-06-13) — leakage audit + serving hardening ✅
+
+- [x] R2: `in_hw_today` เป็น trailing-only (กัน forward-looking feature + serve-consistent)
+- [x] R1: วัด ΔBSS percentile-label leak (gate) — ดู `docs/INTEGRITY.md`
+- [x] retrain final ครอบเต็มปี (issue doy เต็ม) + parity self-test ไม่ต้องตัด 7 วันท้าย
+- [x] runbook ออก forecast on-demand: `docs/RUNBOOK.md`
+- รายละเอียด: `docs/superpowers/specs/2026-06-13-rigor-serving-hardening-design.md`
+
 ## ผลหลักรอบแรก (2026-06-11)
 
 BSS (pooled, เทียบ seasonal climatology) — target หลัก regional-mean p90:

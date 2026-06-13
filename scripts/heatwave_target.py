@@ -93,6 +93,22 @@ def flag_heatwaves(hot_bool: xr.DataArray, min_len: int = 3) -> xr.DataArray:
                         dims=hot_bool.transpose("time", ...).dims, name="heatwave")
 
 
+def trailing_run_length(hot_bool: np.ndarray) -> np.ndarray:
+    """ความยาว run ของ "วันร้อน" ที่ต่อเนื่องและ **จบ ณ ตำแหน่งนั้น** (มองเฉพาะ index <= t).
+
+    รับ 1D (array/Series ของ 0/1/NaN) คืน np.ndarray ความยาวเท่ากัน.
+    ค่า != 1 (รวม 0 และ NaN) = ตัด streak (รีเซ็ตเป็น 0).
+    leak-free โดยนิยาม: ไม่มองอนาคต — ต่างจาก flag_heatwaves ที่นับ fwd+bwd (ใช้ทำ label).
+    """
+    arr = np.asarray(hot_bool, dtype=float)
+    out = np.zeros(arr.shape[0], dtype=float)
+    run = 0.0
+    for i in range(arr.shape[0]):
+        run = run + 1.0 if arr[i] == 1.0 else 0.0
+        out[i] = run
+    return out
+
+
 if __name__ == "__main__":
     try:
         sys.stdout.reconfigure(encoding="utf-8")
@@ -110,6 +126,18 @@ if __name__ == "__main__":
     print("  got     :", got.tolist())
     assert (got == expected).all(), "ตรรกะนับวันติดต่อกันผิด!"
     print("  [OK] ตรรกะถูกต้อง\n")
+
+    # --- unit test: trailing run length (มองย้อนหลังเท่านั้น = leak-free) ---
+    seq2 = np.array([0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1])
+    exp_run = np.array([0, 1, 2, 0, 1, 2, 3, 0, 1, 0, 1, 2, 3, 4])
+    got_run = trailing_run_length(seq2)
+    assert (got_run == exp_run).all(), got_run.tolist()
+    # in_hw (trailing >= 3): ติด 1 ตั้งแต่ "วันที่ 3" ของ streak เป็นต้นไป (ไม่ย้อนติดให้ 2 วันแรก)
+    assert (got_run >= 3).astype(int).tolist() == [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1]
+    # NaN ตัด streak เหมือน 0 (ตามที่ docstring ระบุ — กันใช้ค่าที่ไม่รู้)
+    got_nan = trailing_run_length(np.array([1.0, np.nan, 1.0, 1.0]))
+    assert got_nan.tolist() == [1.0, 0.0, 1.0, 2.0], got_nan.tolist()
+    print("  [OK] trailing_run_length + in_hw(trailing>=3) + NaN reset ถูกต้อง\n")
 
     # --- ถ้ามีไฟล์ปีจริงแล้ว สาธิต climatology + heatwave จริง ---
     ddir = Path(__file__).resolve().parent.parent / "data" / "raw" / "tmax_thailand"
