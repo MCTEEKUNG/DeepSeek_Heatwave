@@ -1,5 +1,6 @@
 # ข้อมูล netCDF/CSV ขนาดใหญ่ — สร้างใหม่ได้ด้วยสคริปต์ใน scripts/
-data/
+data/*
+!data/provinces.csv
 
 # log การดาวน์โหลด
 logs/
