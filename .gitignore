@@ -21,3 +21,7 @@ outputs/
 
 # tool artifacts
 .playwright-mcp/
+
+# large/local archives + preview captures (regenerable; never commit)
+data.zip
+preview-tab*.png
