@@ -77,3 +77,33 @@ def test_staleness_quiet_when_fresh():
     from datetime import datetime, timezone
     c = _good_contract(); c["generated_at"] = datetime.now(timezone.utc).isoformat()
     assert vc.check_staleness(c) is None
+
+
+def test_duplicate_lead_rejected():
+    c = _good_contract()
+    dup = dict(c["provinces"][0]["forecasts"][0])  # another lead 2
+    c["provinces"][0]["forecasts"].append(dup)
+    assert any("leads" in e for e in vc.validate_contract(c))
+
+
+def test_staleness_none_on_non_dict():
+    assert vc.check_staleness([1, 2, 3]) is None
+
+
+def test_main_returns_0_on_good(tmp_path):
+    import json
+    p = tmp_path / "good.json"
+    p.write_text(json.dumps(_good_contract()), encoding="utf-8")
+    assert vc.main(["prog", str(p)]) == 0
+
+
+def test_main_returns_1_on_bad(tmp_path):
+    import json
+    bad = _good_contract(); bad["schema_version"] = 9
+    p = tmp_path / "bad.json"
+    p.write_text(json.dumps(bad), encoding="utf-8")
+    assert vc.main(["prog", str(p)]) == 1
+
+
+def test_main_returns_1_on_missing_file(tmp_path):
+    assert vc.main(["prog", str(tmp_path / "nope.json")]) == 1

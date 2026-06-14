@@ -96,13 +96,15 @@ def validate_contract(obj) -> list[str]:
             th = f.get("risk_level_th")
             if not isinstance(th, str) or not th.strip():
                 errs.append(f"{tag} lead {L} risk_level_th ว่าง")
-        if set(leads) != EXPECTED_LEADS:
+        if set(leads) != EXPECTED_LEADS or len(leads) != len(EXPECTED_LEADS):
             got = sorted(x for x in leads if x is not None)
             errs.append(f"{tag} leads ต้องเป็น {sorted(EXPECTED_LEADS)} (เจอ {got})")
     return errs
 
 
 def check_staleness(obj, max_age_days: int = 7) -> str | None:
+    if not isinstance(obj, dict):
+        return None
     try:
         ga_dt = datetime.fromisoformat(obj.get("generated_at"))
     except (ValueError, TypeError):
@@ -120,7 +122,14 @@ def main(argv) -> int:
         pass
     path = Path(argv[1]) if len(argv) > 1 else \
         Path(__file__).resolve().parent.parent / "docs" / "forecast_provinces.json"
-    obj = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        obj = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        print(f"[FAIL] ไม่พบไฟล์: {path}")
+        return 1
+    except json.JSONDecodeError as e:
+        print(f"[FAIL] JSON เสีย: {path} ({e})")
+        return 1
     warn = check_staleness(obj)
     if warn:
         print(warn)
