@@ -29,7 +29,14 @@ def default_contract() -> Path:
 
 
 def validate_file(path: Path) -> dict:
-    obj = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        obj = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        print(f"[FAIL] ไม่พบไฟล์: {path}")
+        raise SystemExit(1)
+    except json.JSONDecodeError as e:
+        print(f"[FAIL] JSON เสีย: {path} ({e})")
+        raise SystemExit(1)
     warn = vc.check_staleness(obj)
     if warn:
         print(warn)
@@ -49,6 +56,19 @@ def sync(src: Path, dst: Path) -> None:
     print(f"[OK] sync -> {dst}")
 
 
+def _has_unpushed(repo: Path) -> bool:
+    """มี commit บน HEAD ที่ยังไม่ได้ push ขึ้น upstream ไหม (ถ้าไม่มี upstream ตั้งไว้ = ต้อง push)."""
+    up = subprocess.run(["git", "-C", str(repo), "rev-parse", "--abbrev-ref", "@{u}"],
+                        capture_output=True, text=True)
+    if up.returncode != 0:  # ยังไม่มี upstream — first push
+        head = subprocess.run(["git", "-C", str(repo), "rev-list", "-n", "1", "HEAD"],
+                              capture_output=True, text=True)
+        return head.returncode == 0 and bool(head.stdout.strip())
+    ahead = subprocess.run(["git", "-C", str(repo), "rev-list", "@{u}..HEAD", "--count"],
+                           capture_output=True, text=True)
+    return ahead.returncode == 0 and ahead.stdout.strip() not in ("", "0")
+
+
 def publish_contract(contract_json: Path) -> None:
     repo = contract_json.parent
     if not (repo / ".git").exists():
@@ -56,13 +76,16 @@ def publish_contract(contract_json: Path) -> None:
         raise SystemExit(1)
     sync(DOCS_JSON, contract_json)
     subprocess.run(["git", "-C", str(repo), "add", "forecast_provinces.json"], check=True)
-    unchanged = subprocess.run(["git", "-C", str(repo), "diff", "--cached", "--quiet"]).returncode == 0
-    if unchanged:
-        print("[ข้าม] contract ไม่เปลี่ยน — ไม่ commit/push")
-        return
-    subprocess.run(["git", "-C", str(repo), "commit", "-m", "data: update forecast_provinces.json"], check=True)
-    subprocess.run(["git", "-C", str(repo), "push"], check=True)
-    print("[OK] push contract -> Pages")
+    # 0 = ไม่มี staged diff, 1 = มี staged diff
+    staged = subprocess.run(["git", "-C", str(repo), "diff", "--cached", "--quiet"]).returncode == 1
+    if staged:
+        subprocess.run(["git", "-C", str(repo), "commit", "-m", "data: update forecast_provinces.json"], check=True)
+    # push เมื่อมี commit ค้าง — กันกรณี push รอบก่อนล้มเหลวแล้ว retry แล้วเงียบ
+    if _has_unpushed(repo):
+        subprocess.run(["git", "-C", str(repo), "push"], check=True)
+        print("[OK] push contract -> Pages")
+    else:
+        print("[ข้าม] contract ไม่เปลี่ยน + ไม่มี commit ค้าง — ไม่ push")
 
 
 def main() -> int:
@@ -77,8 +100,7 @@ def main() -> int:
     args = ap.parse_args()
 
     if not args.no_predict:
-        sys.path.insert(0, str(ROOT / "scripts"))
-        import predict_provinces
+        import predict_provinces  # lazy: ดึง deps หนัก (pandas ฯลฯ) เฉพาะตอนต้อง predict
         predict_provinces.predict(verbose=True)
     elif not DOCS_JSON.exists():
         print(f"[FAIL] ไม่มี {DOCS_JSON} แต่ใช้ --no-predict")
