@@ -78,3 +78,32 @@ def test_has_unpushed_no_commits_then_after_commit(tmp_path):
     subprocess.run(["git", "-C", str(repo), "add", "f.txt"], check=True)
     subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "c"], check=True)
     assert pb._has_unpushed(repo) is True  # มี commit แต่ยังไม่มี upstream
+
+
+def test_dest_issue_date_reads_and_missing(tmp_path):
+    import json as _json
+    p = tmp_path / "c.json"
+    p.write_text(_json.dumps({"provinces": [{"issue_date": "2026-05-31"}]}), encoding="utf-8")
+    assert pb._dest_issue_date(p) == "2026-05-31"
+    assert pb._dest_issue_date(tmp_path / "missing.json") is None
+
+
+def test_staleness_guard_blocks_older_over_newer(tmp_path, monkeypatch, capsys):
+    """ถ้าปลายทางมี issue_date ใหม่กว่า contract ใหม่ -> main() ต้อง return 1 (กันของเก่าทับของใหม่)."""
+    import json as _json
+    # docs (ของใหม่ที่จะ publish) = เก่ากว่าปลายทาง
+    docs = tmp_path / "docs" / "forecast_provinces.json"
+    docs.parent.mkdir(parents=True)
+    old_contract = {"schema_version": 1, "model": "m", "generated_at": "2023-12-31T00:00:00Z",
+                    "n_provinces": 1, "provinces": [{"issue_date": "2023-12-31"}]}
+    docs.write_text(_json.dumps(old_contract), encoding="utf-8")
+    front = tmp_path / "front" / "forecast_provinces.json"
+    front.parent.mkdir(parents=True)
+    front.write_text(_json.dumps({"provinces": [{"issue_date": "2026-05-31"}]}), encoding="utf-8")
+    monkeypatch.setattr(pb, "DOCS_JSON", docs)
+    # validate ผ่าน (อย่าให้ validate บล็อกก่อนถึง guard) — stub validate_file ให้คืน obj ของ docs
+    monkeypatch.setattr(pb, "validate_file", lambda path: _json.loads(docs.read_text(encoding="utf-8")))
+    monkeypatch.setattr(sys, "argv", ["publish_bridge.py", "--no-predict", "--frontend", str(front)])
+    rc = pb.main()
+    assert rc == 1
+    assert "issue_date ใหม่กว่า" in capsys.readouterr().out

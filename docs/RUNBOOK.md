@@ -30,12 +30,13 @@ python scripts/predict.py
 ## C. Pipeline bridge (forecast รายจังหวัด -> frontend)
 ส่ง `docs/forecast_provinces.json` ไปยัง frontend แบบ predict -> validate (hard gate) -> distribute
 ```
-python scripts/publish_bridge.py            # predict + validate + sync -> HeatMAP_Frontend/public/ (dev)
+python scripts/publish_bridge.py            # operational predict (ปัจจุบัน) + validate + sync -> frontend/public (dev); --no-operational = ใช้ข้อมูลย้อนหลัง
 python scripts/publish_bridge.py --no-predict   # ใช้ไฟล์เดิม: validate + sync (ไม่ predict ใหม่)
 python scripts/publish_bridge.py --publish      # + sync เข้า heatwave-contract แล้ว git push -> GitHub Pages (prod)
 python scripts/validate_contract.py             # ตรวจ contract อย่างเดียว (exit 1 ถ้าไม่ผ่าน)
 ```
 - validate เป็น **hard gate**: ถ้า contract ผิด จะ abort ไม่ distribute
+- bridge มี guard: ปฏิเสธ ถ้าปลายทางมี issue_date ใหม่กว่า contract ที่จะ publish (กันของเก่าทับของใหม่)
 - override path ปลายทาง: env `BRIDGE_FRONTEND_DIR`, `BRIDGE_CONTRACT_DIR`
 - prod contract เผยแพร่ที่ `https://mcteekung.github.io/heatwave-contract/forecast_provinces.json` (schema_version 1)
 

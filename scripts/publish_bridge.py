@@ -16,6 +16,15 @@ import validate_contract as vc  # noqa: E402
 DOCS_JSON = ROOT / "docs" / "forecast_provinces.json"
 
 
+def _dest_issue_date(path: Path) -> str | None:
+    """issue_date ที่ปลายทางมีอยู่ (จังหวัดแรก) — None ถ้าไม่มีไฟล์/อ่านไม่ได้."""
+    try:
+        obj = json.loads(path.read_text(encoding="utf-8"))
+        return obj["provinces"][0]["issue_date"]
+    except (FileNotFoundError, json.JSONDecodeError, KeyError, IndexError):
+        return None
+
+
 def default_frontend() -> Path:
     base = Path(os.environ["BRIDGE_FRONTEND_DIR"]) if os.environ.get("BRIDGE_FRONTEND_DIR") \
         else ROOT.parent / "HeatMAP_Frontend" / "public"
@@ -95,18 +104,31 @@ def main() -> int:
         pass
     ap = argparse.ArgumentParser(description="Pipeline bridge: predict -> validate -> distribute")
     ap.add_argument("--no-predict", action="store_true", help="ข้าม predict, ใช้ docs/forecast_provinces.json เดิม")
+    ap.add_argument("--no-operational", dest="operational", action="store_false",
+                    help="ใช้ข้อมูลเทรนเต็ม (issue_date ย้อนหลัง) แทน operational/raw_recent")
     ap.add_argument("--publish", action="store_true", help="sync เข้า contract repo แล้ว git push (prod)")
     ap.add_argument("--frontend", type=Path, default=None, help="path ปลายทาง dev sink (override)")
+    ap.set_defaults(operational=True)
     args = ap.parse_args()
 
     if not args.no_predict:
         import predict_provinces  # lazy: ดึง deps หนัก (pandas ฯลฯ) เฉพาะตอนต้อง predict
-        predict_provinces.predict(verbose=True)
+        predict_provinces.predict(verbose=True, operational=args.operational)
     elif not DOCS_JSON.exists():
         print(f"[FAIL] ไม่มี {DOCS_JSON} แต่ใช้ --no-predict")
         return 1
 
-    validate_file(DOCS_JSON)
+    obj = validate_file(DOCS_JSON)
+    new_issue = obj["provinces"][0]["issue_date"]
+    dests = [args.frontend or default_frontend()]
+    if args.publish:
+        dests.append(default_contract())
+    for dst in dests:
+        old = _dest_issue_date(dst)
+        if old is not None and old > new_issue:
+            print(f"[FAIL] ปลายทาง {dst} มี issue_date ใหม่กว่า ({old} > {new_issue}) "
+                  f"— ยกเลิก กัน publish ของเก่าทับของใหม่ (ใช้ --no-operational เฉพาะเมื่อจงใจ)")
+            return 1
     sync(DOCS_JSON, args.frontend or default_frontend())
 
     if args.publish:
