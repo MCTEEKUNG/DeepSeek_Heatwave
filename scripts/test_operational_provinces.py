@@ -36,3 +36,55 @@ def test_base_rate_per_province_in_range_and_varies():
         assert 0.0 <= v <= 1.0
     # per-province ต้อง "ต่างกันจริง" (แก้ quirk pooled ที่ทุกจังหวัดเท่ากัน)
     assert len(set(round(v, 4) for v in vals_lead2)) > 1
+
+
+import numpy as np
+import xarray as xr
+
+
+def test_operational_thr90_aligns_with_recent_grid():
+    """เกณฑ์ p90 แช่แข็งต้องมีพิกัด lat/lon ตรงกับ recent grid เป๊ะ
+    ไม่งั้น hot_days broadcast เพี้ยน (= ความเสี่ยงหลักของ operational mode)."""
+    from build_provinces_dataset import RECENT_TMAX_DIR
+    recent = sorted(RECENT_TMAX_DIR.glob("era5_tmax_thailand_*.nc"))
+    if not recent or not CLIM.exists():
+        pytest.skip("ต้องมี raw_recent/ + climatology_provinces.pkl")
+    thr90 = _load_clim()["thr90_grid"]
+    ds = xr.open_dataset(recent[0])
+    rlat = ds["latitude"].values
+    rlon = ds["longitude"].values
+    assert np.array_equal(np.asarray(thr90["latitude"].values), np.asarray(rlat)), "latitude ไม่ตรง"
+    assert np.array_equal(np.asarray(thr90["longitude"].values), np.asarray(rlon)), "longitude ไม่ตรง"
+
+
+def test_operational_features_schema_complete():
+    """operational feat ต้องมีคอลัมน์ FEATURES_P ครบ + hw_grid เป็น None + วันที่อยู่ปี 2026."""
+    from build_provinces_dataset import build_provinces_features, RECENT_TMAX_DIR
+    if not list(RECENT_TMAX_DIR.glob("*.nc")) or not CLIM.exists():
+        pytest.skip("ต้องมี raw_recent/ + climatology_provinces.pkl")
+    from train_provinces import FEATURES_P
+    feat, hw = build_provinces_features(verbose=False, operational=True)
+    assert hw is None
+    missing = [c for c in FEATURES_P if c not in feat.columns]
+    assert not missing, f"ขาดคอลัมน์ feature: {missing}"
+    assert str(feat["date"].max())[:4] == "2026", f"วันล่าสุดไม่ใช่ปี 2026: {feat['date'].max()}"
+
+
+def test_operational_parity_with_historical():
+    """ถ้า recent ทับช่วง historical: feature ของ operational ต้องตรงกับ historical
+    (skip ถ้าไม่ทับ — recent 2026 ไม่ทับ historical ≤2023)."""
+    from build_provinces_dataset import build_provinces_features, RECENT_TMAX_DIR
+    if not list(RECENT_TMAX_DIR.glob("*.nc")) or not CLIM.exists():
+        pytest.skip("ต้องมี raw_recent/ + climatology_provinces.pkl")
+    from train_provinces import FEATURES_P
+    feat_op, _ = build_provinces_features(verbose=False, operational=True)
+    feat_hi, _ = build_provinces_features(verbose=False, operational=False)
+    m = feat_op.merge(feat_hi, on=["province_id", "date"], suffixes=("_op", "_hi"))
+    if len(m) == 0:
+        pytest.skip("recent กับ historical ไม่มีวันทับกัน — parity เชิงค่าเทียบไม่ได้")
+    bad = 0
+    for c in FEATURES_P:
+        a = m[f"{c}_op"].to_numpy(float); b = m[f"{c}_hi"].to_numpy(float)
+        ok = np.isclose(a, b, rtol=1e-6, atol=1e-8) | (np.isnan(a) & np.isnan(b))
+        bad += int((~ok).sum())
+    assert bad == 0, f"operational parity ไม่ตรง {bad} จุด"
