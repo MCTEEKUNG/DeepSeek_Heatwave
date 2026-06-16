@@ -22,6 +22,23 @@ from province_grid import load_provinces, province_series, REGIONS
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT_FILE = ROOT / "data" / "processed" / "dataset_provinces.parquet"
+RECENT_TMAX_DIR = TMAX_DIR.parent.parent / "raw_recent" / "tmax_thailand"
+RECENT_SOIL_DIR = SOIL_DIR.parent.parent / "raw_recent" / "soil_moisture_thailand"
+CLIM_PROV_FILE = ROOT / "models" / "climatology_provinces.pkl"
+
+
+def _load_frozen_climatology() -> dict:
+    import pickle
+    # pickle ปลอดภัยที่นี่: ไฟล์สร้างเองด้วย freeze_provinces_climatology.py
+    # บนเครื่อง/CI เดียวกัน ไม่ได้โหลดจากแหล่งภายนอกที่ไม่น่าเชื่อถือ
+    if not CLIM_PROV_FILE.exists():
+        raise FileNotFoundError(
+            f"ไม่พบ {CLIM_PROV_FILE.name} — รัน `python scripts/freeze_provinces_climatology.py` ก่อน"
+        )
+    with open(CLIM_PROV_FILE, "rb") as fh:
+        return pickle.load(fh)
+
+
 LOCAL_FEATURES = ["sm1", "sm1_mean7", "sm1_mean30", "sm1_trend",
                   "sm3", "sm3_mean7", "sm3_mean30", "sm3_trend",
                   "tmax_rm", "tmax_mean7", "in_hw_today", "hot_frac7"]
@@ -33,10 +50,10 @@ def province_static_columns() -> list[str]:
     return ["lat", "lon"] + [f"region_{r}" for r in REGIONS]
 
 
-def _soil_grid(layer: int) -> xr.DataArray:
-    files = sorted(SOIL_DIR.glob(f"era5_sm_l{layer}_thailand_*.nc"))
+def _soil_grid(layer: int, soil_dir: Path = SOIL_DIR) -> xr.DataArray:
+    files = sorted(soil_dir.glob(f"era5_sm_l{layer}_thailand_*.nc"))
     if not files:
-        raise FileNotFoundError(f"ไม่พบ soil moisture ชั้น {layer} ใน {SOIL_DIR}")
+        raise FileNotFoundError(f"ไม่พบ soil moisture ชั้น {layer} ใน {soil_dir}")
     ds = xr.open_mfdataset([str(p) for p in files], combine="by_coords")
     da = ds[f"swvl{layer}"].load()
     if "valid_time" in da.dims:
@@ -46,21 +63,27 @@ def _soil_grid(layer: int) -> xr.DataArray:
     return da.sortby("time")
 
 
-def build_provinces_features(verbose: bool = True) -> tuple[pd.DataFrame, xr.DataArray]:
+def build_provinces_features(verbose: bool = True, operational: bool = False) -> tuple[pd.DataFrame, "xr.DataArray | None"]:
     """คืน (feat_all, hw_grid). feat_all = pooled features ทุกจังหวัด (ยังไม่มี target).
 
     reuse ตัวเดียวทั้ง train และ serve เพื่อ parity. hw_grid = heatwave per-cell (ไว้ทำ target ใน build()).
+    operational=True: ใช้ข้อมูล raw_recent + thr90 แช่แข็ง + MJO impute; hw_grid คืน None.
     """
     def log(m):
         if verbose:
             print(m, flush=True)
+    tmax_dir = RECENT_TMAX_DIR if operational else TMAX_DIR
+    soil_dir = RECENT_SOIL_DIR if operational else SOIL_DIR
     log("[prov] โหลด Tmax grid + เกณฑ์ p90 ราย doy ราย cell ...")
-    t_grid = load_tmax_celsius(sorted(TMAX_DIR.glob("era5_tmax_thailand_*.nc")))
-    thr90 = doy_window_percentile(t_grid, q=90, window=PCTL_WINDOW)
+    t_grid = load_tmax_celsius(sorted(tmax_dir.glob("era5_tmax_thailand_*.nc")))
+    if operational:
+        thr90 = _load_frozen_climatology()["thr90_grid"]
+    else:
+        thr90 = doy_window_percentile(t_grid, q=90, window=PCTL_WINDOW)
     hot_grid = hot_days(t_grid, thr90)
-    hw_grid = flag_heatwaves(hot_grid, min_len=MIN_RUN)
+    hw_grid = None if operational else flag_heatwaves(hot_grid, min_len=MIN_RUN)
     log("[prov] โหลด soil moisture grid ชั้น 1, 3 ...")
-    sm1_grid, sm3_grid = _soil_grid(1), _soil_grid(3)
+    sm1_grid, sm3_grid = _soil_grid(1, soil_dir), _soil_grid(3, soil_dir)
     mjo = mjo_features(INDICES_DIR / "mjo_rmm.csv")
     pv = load_provinces()
 
@@ -84,6 +107,13 @@ def build_provinces_features(verbose: bool = True) -> tuple[pd.DataFrame, xr.Dat
         frames.append(feat.reset_index(drop=True))
     feat_all = pd.concat(frames, ignore_index=True)
     log(f"[prov] features: {len(feat_all)} แถว x {len(pv)} จังหวัด")
+    if operational:
+        from predict import impute_neutral_mjo, load_climatology
+        means = (load_climatology() or {}).get("mjo_means")
+        tmp = feat_all.set_index("date")
+        tmp, imputed = impute_neutral_mjo(tmp, means)
+        feat_all = tmp.reset_index()
+        feat_all.attrs["mjo_imputed_dates"] = imputed
     return feat_all, hw_grid
 
 
