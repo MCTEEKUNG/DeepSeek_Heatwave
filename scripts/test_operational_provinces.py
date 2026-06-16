@@ -88,3 +88,20 @@ def test_operational_parity_with_historical():
         ok = np.isclose(a, b, rtol=1e-6, atol=1e-8) | (np.isnan(a) & np.isnan(b))
         bad += int((~ok).sum())
     assert bad == 0, f"operational parity ไม่ตรง {bad} จุด"
+
+
+def test_operational_forecast_is_current_and_per_province():
+    import json
+    out = ROOT / "docs" / "forecast_provinces.json"
+    if not out.exists():
+        pytest.skip("ยังไม่ได้รัน predict_provinces.py operational")
+    d = json.loads(out.read_text(encoding="utf-8"))
+    assert d["n_provinces"] == 77
+    issue_years = {p["issue_date"][:4] for p in d["provinces"]}
+    assert issue_years == {"2026"}, f"issue_date ไม่ใช่ปี 2026: {issue_years}"
+    br = {round([f for f in p["forecasts"] if f["lead_weeks"] == 2][0]["climatology_base_rate"], 4)
+          for p in d["provinces"]}
+    assert len(br) > 1, "base_rate ยังเป็น pooled (ค่าเดียวทุกจังหวัด)"
+    for p in d["provinces"]:
+        for f in p["forecasts"]:
+            assert 0.0 < f["probability"] < 1.0

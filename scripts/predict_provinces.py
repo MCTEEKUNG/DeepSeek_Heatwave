@@ -17,7 +17,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
-from build_provinces_dataset import build_provinces_features
+from build_provinces_dataset import build_provinces_features, _load_frozen_climatology
 from train_provinces import LEADS, FEATURES_P
 from train_final_provinces import artifact_path
 from predict import risk_level
@@ -35,12 +35,16 @@ def _load_arts():
     return arts
 
 
-def build_forecast() -> dict:
-    feat_all, _hw = build_provinces_features(verbose=False)
+def build_forecast(operational: bool = False) -> dict:
+    feat_all, _hw = build_provinces_features(verbose=False, operational=operational)
     arts = _load_arts()
+    clim = _load_frozen_climatology()
+    prov_base = clim["base_rate"]                       # {pid: {lead: rate}}
+    imputed = feat_all.attrs.get("mjo_imputed_dates", set())
     pv = load_provinces().set_index("id")
     skill = pd.read_csv(SKILL_CSV) if SKILL_CSV.exists() else pd.DataFrame()
     provinces_out = []
+    warned = False
     for pid, g in feat_all.groupby("province_id"):
         valid = g.dropna(subset=FEATURES_P)
         if valid.empty:
@@ -52,11 +56,14 @@ def build_forecast() -> dict:
         for L in LEADS:
             a = arts[L]
             p = float(a["calibrator"].transform(a["estimator"].predict_proba(X)[:, 1])[0])
-            th, en, ratio = risk_level(p, a["base_rate"])
+            br = float(prov_base[int(pid)][int(L)])      # per-province base_rate
+            th, en, ratio = risk_level(p, br)
             fcs.append({"lead_weeks": L, "probability": round(p, 4),
-                        "climatology_base_rate": round(a["base_rate"], 4),
+                        "climatology_base_rate": round(br, 4),
                         "ratio_vs_normal": round(ratio, 2),
                         "risk_level_th": th, "risk_level_en": en})
+        if pd.Timestamp(row["date"]) in imputed:
+            warned = True
         provinces_out.append({"id": int(pid), "code": info["code"],
                               "name_th": info["name_th"], "name_en": info["name_en"],
                               "region": info["region"], "lat": float(info["lat"]),
@@ -66,6 +73,8 @@ def build_forecast() -> dict:
     out = {"schema_version": 1, "model": arts[LEADS[0]]["model_name"],
            "generated_at": datetime.now(timezone.utc).isoformat(),
            "n_provinces": len(provinces_out), "provinces": provinces_out}
+    if warned:
+        out["warnings"] = ["ข้อมูล MJO ไม่อัปเดตถึงวันออกพยากรณ์ — ใช้ค่า MJO กลางแทน (ผลอาจคลาดเคลื่อนเล็กน้อย)"]
     if not skill.empty:
         out["skill"] = skill.to_dict(orient="records")
     return out
@@ -90,17 +99,20 @@ def _selftest() -> None:
     print("[OK] self-test ผ่าน")
 
 
-def predict(verbose: bool = True) -> dict:
-    fc = build_forecast()
+def predict(verbose: bool = True, operational: bool = False) -> dict:
+    fc = build_forecast(operational=operational)
     OUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     OUT_FILE.write_text(json.dumps(fc, ensure_ascii=False, indent=2), encoding="utf-8")
     if verbose:
-        print(f"[OK] {OUT_FILE} | {fc['n_provinces']} จังหวัด | model {fc['model']}")
+        iss = fc["provinces"][0]["issue_date"] if fc["provinces"] else "?"
+        print(f"[OK] {OUT_FILE} | {fc['n_provinces']} จังหวัด | model {fc['model']} | issue {iss}")
     return fc
 
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "test":
         _selftest()
+    elif len(sys.argv) > 1 and sys.argv[1] == "operational":
+        predict(operational=True)
     else:
         predict()
