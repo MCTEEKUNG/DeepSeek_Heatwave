@@ -74,7 +74,8 @@ def build_provinces_features(verbose: bool = True, operational: bool = False) ->
             print(m, flush=True)
     tmax_dir = RECENT_TMAX_DIR if operational else TMAX_DIR
     soil_dir = RECENT_SOIL_DIR if operational else SOIL_DIR
-    log("[prov] โหลด Tmax grid + เกณฑ์ p90 ราย doy ราย cell ...")
+    log(f"[prov] โหลด Tmax grid ({'recent' if operational else 'full'}) + "
+        f"{'เกณฑ์ p90 แช่แข็ง' if operational else 'เกณฑ์ p90 ราย doy ราย cell'} ...")
     t_grid = load_tmax_celsius(sorted(tmax_dir.glob("era5_tmax_thailand_*.nc")))
     if operational:
         thr90 = _load_frozen_climatology()["thr90_grid"]
@@ -109,10 +110,11 @@ def build_provinces_features(verbose: bool = True, operational: bool = False) ->
     log(f"[prov] features: {len(feat_all)} แถว x {len(pv)} จังหวัด")
     if operational:
         from predict import impute_neutral_mjo, load_climatology
-        means = (load_climatology() or {}).get("mjo_means")
+        means = load_climatology().get("mjo_means")   # regional climatology.pkl (มีอยู่แล้ว)
         tmp = feat_all.set_index("date")
         tmp, imputed = impute_neutral_mjo(tmp, means)
         feat_all = tmp.reset_index()
+        # หมายเหตุ: ผู้เรียกต้องอ่าน attrs นี้ก่อน concat/merge (pandas อาจ drop .attrs)
         feat_all.attrs["mjo_imputed_dates"] = imputed
     return feat_all, hw_grid
 
