@@ -53,7 +53,7 @@ audit/gate **อ่าน** `docs/forecast.json`, `docs/forecast_provinces.json`
 | หมวด | คำถาม | เช็คตัวอย่าง | blocking? |
 |---|---|---|---|
 | 1. Freshness | ข้อมูลสดจริงไหม | `issue_date` ห่างจากวันนี้ ≤ ~10 วัน (ไม่ใช่แค่ `generated_at`); ตรวจ "demo path" ไม่หลุดขึ้น publish | ✅ |
-| 2. Plausibility | ตัวเลขดูแปลกไหม | สัดส่วนจังหวัด High พร้อมกันไม่เกินเพดาน; `ratio_vs_normal` ≤ เพดาน; ไม่ degenerate (ทุกค่าเท่ากันเป๊ะ) | ✅ |
+| 2. Plausibility | ตัวเลขดูแปลกไหม | สัดส่วนจังหวัด High พร้อมกัน (WARN เท่านั้น ‼️ ไม่ block — อาจเป็นสัญญาณ El Niño จริง), `ratio_vs_normal` ≤ เพดาน (WARN) | WARN |
 | 3. Data quality | วัตถุดิบครบ/ดีไหม | NaN เกินเกณฑ์, domain guard (`in_training_domain`), feature อยู่ในช่วงเทรน, MJO-impute flag | บางตัว ✅ |
 | 4. Skill/calibration | โมเดลแม่นกว่าเดาไหม | BSS vs climatology ยังเป็นบวก (อ่านจาก outputs/analysis); reliability ไม่ bias สูงผิดปกติ | WARN |
 | 5. Risk communication | เว็บสื่อสารไม่ชวนเข้าใจผิดไหม | UI ระบุ "ความน่าจะเป็นการเกิด ไม่ใช่ความรุนแรง"; โชว์ `issue_date` เด่น | WARN→fix |
