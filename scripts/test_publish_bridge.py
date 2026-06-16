@@ -107,3 +107,5 @@ def test_staleness_guard_blocks_older_over_newer(tmp_path, monkeypatch, capsys):
     rc = pb.main()
     assert rc == 1
     assert "issue_date ใหม่กว่า" in capsys.readouterr().out
+    # ปลายทางต้องไม่ถูกเขียนทับ (ของใหม่กว่ายังอยู่)
+    assert _json.loads(front.read_text(encoding="utf-8"))["provinces"][0]["issue_date"] == "2026-05-31"
