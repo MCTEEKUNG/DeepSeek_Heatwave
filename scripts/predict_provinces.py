@@ -56,7 +56,11 @@ def build_forecast(operational: bool = False) -> dict:
         for L in LEADS:
             a = arts[L]
             p = float(a["calibrator"].transform(a["estimator"].predict_proba(X)[:, 1])[0])
-            br = float(prov_base[int(pid)][int(L)])      # per-province base_rate
+            try:
+                br = float(prov_base[int(pid)][int(L)])   # per-province base_rate
+            except KeyError:
+                raise KeyError(f"base_rate ไม่มีจังหวัด {int(pid)} lead {int(L)} "
+                               f"— รัน freeze_provinces_climatology.py ใหม่") from None
             th, en, ratio = risk_level(p, br)
             fcs.append({"lead_weeks": L, "probability": round(p, 4),
                         "climatology_base_rate": round(br, 4),
@@ -74,7 +78,8 @@ def build_forecast(operational: bool = False) -> dict:
            "generated_at": datetime.now(timezone.utc).isoformat(),
            "n_provinces": len(provinces_out), "provinces": provinces_out}
     if warned:
-        out["warnings"] = ["ข้อมูล MJO ไม่อัปเดตถึงวันออกพยากรณ์ — ใช้ค่า MJO กลางแทน (ผลอาจคลาดเคลื่อนเล็กน้อย)"]
+        out["warnings"] = ["ข้อมูล MJO ไม่อัปเดตถึงวันออกพยากรณ์ — ใช้ค่า MJO กลางแทน "
+                           "(MJO มีผลต่อความแม่นยำน้อย แต่ผลอาจคลาดเคลื่อนเล็กน้อย)"]
     if not skill.empty:
         out["skill"] = skill.to_dict(orient="records")
     return out
