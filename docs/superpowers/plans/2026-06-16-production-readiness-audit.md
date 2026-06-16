@@ -1148,3 +1148,33 @@ git commit -m "docs: RUNBOOK - per-province operational + readiness audit/gate c
 **Type consistency:** `CheckResult(name, category, status, detail, blocking)` + `failed_block()` ใช้สม่ำเสมอทุก task. รายการเช็ค `FRESHNESS_PLAUSIBILITY`/`DATA_QUALITY`/`SKILL`/`COMMS` ชื่อตรงกันระหว่าง checks.py/audit.py/gate.py. ✓
 
 **ข้อควรระวังตอน execute:** Task 1 rebuild dataset เขียนทับ climatology.pkl ที่ commit ไว้ — ค่า threshold เดิมต้องไม่เปลี่ยน (แค่เพิ่ม key thr90_cell) ; ตรวจว่า thr90_rm/thr95_rm/mjo_means เดิมยังอยู่.
+
+---
+
+## ⚠️ Post-merge integration (ต้องทำตอนรวม 2 branch — advisor จับ)
+
+Phase 2-3 (branch นี้) เสร็จแล้ว แต่มี **seam ระหว่าง branch** ที่ selftest มองไม่เห็น ต้องจัดการตอน merge:
+
+### M1 (BLOCKER — ถ้าไม่ทำ pipeline จะ deadlock): flip publish_bridge เป็น operational
+ทั้ง `feat/operational-province-mode` และ branch นี้ ที่ `scripts/publish_bridge.py:~104` ยังเรียก
+`predict_provinces.predict(verbose=True)` (operational ดีฟอลต์ **False** → สร้าง demo 2023).
+หลัง merge: publish_bridge สร้าง demo → readiness gate (freshness) บล็อก → **publish ไม่ได้เลย**.
+**แก้ 1 บรรทัด (ทำหลัง merge เมื่อ predict_provinces มี param operational แล้ว):**
+```python
+        predict_provinces.predict(operational=True, verbose=True)
+```
+(ทำบน branch นี้ตอนนี้ไม่ได้ เพราะ predict_provinces เวอร์ชัน branch นี้ยังไม่มี param `operational`
+— เป็นของ feat/operational-province-mode. เจ้าของ merge ต้อง flip บรรทัดนี้ + รัน parity).
+
+### M2 (gap — ความเสี่ยงต่ำ): cron forecast.yml ไม่ผ่าน gate
+`.github/workflows/forecast.yml` publish **regional** `docs/forecast.json` อัตโนมัติ (predict.py operational
+→ issue_date สด) ด้วย inline check ของตัวเอง (เช็คแค่ 5 lead + prob range) **ไม่ผ่าน readiness gate**.
+ความเสี่ยงต่ำ (operational = สด, regional ไม่ใช่ per-province ที่เคยหลุด) แต่ควร: ทำ gate รองรับ schema
+regional (top-level `forecasts` ไม่มี `provinces`) แล้วให้ cron เรียกก่อน commit. = งานต่อยอด.
+หมายเหตุ: per-province contract (ตัวที่เคยหลุด demo) **ไม่มี automation** — publish ผ่าน manual
+`publish_bridge --publish` ที่ gate แล้ว ✓.
+
+### M3 (ปรับจูน): freshness threshold 10 วัน vs ERA5 latency ~5-6 วัน
+ERA5 ล่าช้า ~5-6 วัน + CDS เคยล่ม (retry 16 ชม. ตาม INTEGRITY/memory). forecast operational จริงจะเก่า
+~6 วันเป็นปกติ → margin บาง. ยืนยัน 10 วันพอ หรือขยับ (เช่น 14) เทียบ worst-case latency จริง
+ก่อน rely บน production. ค่าอยู่ที่ `scripts/readiness/checks.py:MAX_ISSUE_AGE_DAYS`.
