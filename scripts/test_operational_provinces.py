@@ -91,11 +91,13 @@ def test_operational_parity_with_historical():
 
 
 def test_operational_forecast_is_current_and_per_province():
-    import json
-    out = ROOT / "docs" / "forecast_provinces.json"
-    if not out.exists():
-        pytest.skip("ยังไม่ได้รัน predict_provinces.py operational")
-    d = json.loads(out.read_text(encoding="utf-8"))
+    """e2e จริง: เรียก build_forecast(operational=True) ในหน่วยความจำ (ไม่พึ่งไฟล์ที่ commit ไว้
+    ซึ่งอาจเป็นรอบ historical) -> issue ปี 2026, base_rate รายจังหวัด, prob ∈ (0,1)."""
+    from build_provinces_dataset import RECENT_TMAX_DIR
+    if not list(RECENT_TMAX_DIR.glob("*.nc")) or not CLIM.exists():
+        pytest.skip("ต้องมี raw_recent/ + climatology_provinces.pkl")
+    from predict_provinces import build_forecast
+    d = build_forecast(operational=True)
     assert d["n_provinces"] == 77
     issue_years = {p["issue_date"][:4] for p in d["provinces"]}
     assert issue_years == {"2026"}, f"issue_date ไม่ใช่ปี 2026: {issue_years}"
