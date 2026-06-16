@@ -47,17 +47,21 @@ def freeze(verbose: bool = True) -> dict:
             m = g[col].notna()
             base[int(pid)][int(L)] = float(g.loc[m, col].mean()) if m.any() else float("nan")
 
+    # base_rate มาจาก parquet (groupby province_id) ส่วน pv มาจาก provinces.csv —
+    # ต้องตรงกัน ไม่งั้น artifact จะอ้าง n_provinces ผิดเงียบ ๆ (จับ data drift ตอน build)
+    assert len(base) == len(pv), f"จำนวนจังหวัดไม่ตรง: parquet={len(base)}, csv={len(pv)}"
+
     art = {
         "thr90_grid": thr90,
         "base_rate": base,
-        "n_provinces": int(len(pv)),
+        "n_provinces": int(len(base)),
         "leads": list(LEADS),
         "window": PCTL_WINDOW,
         "min_run": MIN_RUN,
         "built_at": datetime.now(timezone.utc).isoformat(),
         "source": str(TMAX_DIR),
     }
-    CLIM_FILE.parent.mkdir(exist_ok=True)
+    CLIM_FILE.parent.mkdir(parents=True, exist_ok=True)
     # pickle is safe here: artifact is generated and consumed entirely within this
     # codebase from trusted local sources (ERA5 .nc files + project parquet).
     with open(CLIM_FILE, "wb") as fh:
