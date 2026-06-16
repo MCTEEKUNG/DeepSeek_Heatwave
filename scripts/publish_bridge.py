@@ -46,7 +46,16 @@ def validate_file(path: Path) -> dict:
         for e in errs:
             print(f"  - {e}")
         raise SystemExit(1)
-    print(f"[OK] validate ผ่าน: {len(obj['provinces'])} จังหวัด")
+    # readiness gate (freshness/plausibility/data-quality blocking) — ชั้นที่สอง ก่อน distribute
+    sys.path.insert(0, str(Path(__file__).resolve().parent / "readiness"))
+    from gate import run_gate
+    ok, blockers = run_gate(obj)
+    if not ok:
+        print(f"[FAIL] readiness gate ไม่ผ่าน {len(blockers)} ข้อ — ยกเลิก distribute:")
+        for b in blockers:
+            print(f"  - [{b.category}] {b.name}: {b.detail}")
+        raise SystemExit(1)
+    print(f"[OK] validate ผ่าน: {len(obj['provinces'])} จังหวัด + readiness gate")
     return obj
 
 

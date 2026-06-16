@@ -139,7 +139,15 @@ def main(argv) -> int:
         for e in errs:
             print(f"  - {e}")
         return 1
-    print(f"[OK] contract ผ่าน: {len(obj['provinces'])} จังหวัด, schema v{obj['schema_version']}")
+    sys.path.insert(0, str(Path(__file__).resolve().parent / "readiness"))
+    from gate import run_gate
+    ok, blockers = run_gate(obj)
+    if not ok:
+        print(f"[FAIL] readiness gate ไม่ผ่าน {len(blockers)} ข้อ:")
+        for b in blockers:
+            print(f"  - [{b.category}] {b.name}: {b.detail}")
+        return 1
+    print(f"[OK] contract ผ่าน: {len(obj['provinces'])} จังหวัด, schema v{obj['schema_version']} + readiness gate")
     return 0
 
 
