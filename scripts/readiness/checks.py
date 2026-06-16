@@ -7,7 +7,11 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone
 
 PASS, WARN, FAIL = "PASS", "WARN", "FAIL"
-MAX_ISSUE_AGE_DAYS = 10          # issue_date เก่ากว่านี้ = ข้อมูลไม่สด (อาจเป็น demo/backtest)
+# Freshness วัด "ช่องว่างระหว่างวันสร้างพยากรณ์กับวันของข้อมูลที่ใช้" (generated_at - issue_date)
+# ไม่ใช่ (วันนี้ - issue_date) — เพราะตัวแยก demo(ใช้ข้อมูล 2023) ออกจากพยากรณ์สด(ERA5 ล่าช้า ~6 วัน)
+# คือ "ข้อมูลล้าหลังตอนสร้างแค่ไหน": demo gap ~898 วัน vs operational ~16 วัน.
+MAX_DATA_LAG_DAYS = 30           # generated_at - issue_date เกินนี้ = ใช้ข้อมูลเก่า/ผิด (block)
+MAX_GENERATED_AGE_DAYS = 14      # วันนี้ - generated_at เกินนี้ = ไฟล์ไม่ถูก refresh (WARN)
 MAX_HIGH_FRACTION = 0.80         # จังหวัดที่ขึ้น High พร้อมกันเกินสัดส่วนนี้ = ควรดูด้วยตา (WARN เท่านั้น)
 MAX_RATIO = 6.0                  # ratio_vs_normal เกินนี้ = ควรตรวจสอบ (WARN)
 
@@ -28,25 +32,59 @@ def _today() -> date:
     return datetime.now(timezone.utc).date()
 
 
-def check_issue_date_fresh(obj: dict) -> CheckResult:
-    """Freshness: issue_date (ไม่ใช่ generated_at) ต้องไม่เก่าเกิน MAX_ISSUE_AGE_DAYS."""
+def _parse_generated_date(obj: dict):
+    """คืน date ของ generated_at (ISO datetime) หรือ None ถ้า parse ไม่ได้."""
+    ga = obj.get("generated_at")
+    try:
+        return datetime.fromisoformat(ga).date()
+    except (ValueError, TypeError):
+        return None
+
+
+def check_data_lag(obj: dict) -> CheckResult:
+    """Freshness (blocking): ช่องว่าง generated_at - issue_date (ข้อมูลล้าหลังตอนสร้างแค่ไหน).
+
+    นี่คือตัวแยก 'demo ใช้ข้อมูล 2023' (gap ~898 วัน) ออกจาก 'พยากรณ์สดที่ ERA5 ล่าช้า' (gap ~16 วัน).
+    วัด today-issue_date ไม่ได้ เพราะพยากรณ์สดที่ถูกต้องก็ห่างวันนี้ ~6-16 วันตาม latency อยู่แล้ว.
+    """
     cat = "freshness"
     provs = obj.get("provinces") or []
     if not provs:
-        return CheckResult("issue_date_fresh", cat, FAIL, "ไม่มี provinces", blocking=True)
+        return CheckResult("data_lag", cat, FAIL, "ไม่มี provinces", blocking=True)
+    gen = _parse_generated_date(obj)
+    if gen is None:
+        return CheckResult("data_lag", cat, FAIL,
+                           f"generated_at parse ไม่ได้: {obj.get('generated_at')!r}", blocking=True)
     issues = {p.get("issue_date") for p in provs}
     try:
-        ages = [(_today() - date.fromisoformat(d)).days for d in issues if d]
+        lags = [(gen - date.fromisoformat(d)).days for d in issues if d]
     except (ValueError, TypeError):
-        return CheckResult("issue_date_fresh", cat, FAIL, f"issue_date parse ไม่ได้: {issues}", blocking=True)
-    if not ages:
-        return CheckResult("issue_date_fresh", cat, FAIL, "ไม่มี issue_date", blocking=True)
-    worst = max(ages)
-    if worst > MAX_ISSUE_AGE_DAYS:
-        return CheckResult("issue_date_fresh", cat, FAIL,
-                           f"issue_date เก่า {worst} วัน (เกิน {MAX_ISSUE_AGE_DAYS}) — อาจเป็นข้อมูล demo/backtest",
-                           blocking=True)
-    return CheckResult("issue_date_fresh", cat, PASS, f"issue_date เก่าสุด {worst} วัน", blocking=True)
+        return CheckResult("data_lag", cat, FAIL, f"issue_date parse ไม่ได้: {issues}", blocking=True)
+    if not lags:
+        return CheckResult("data_lag", cat, FAIL, "ไม่มี issue_date", blocking=True)
+    worst = max(lags)          # lag มากสุด = ข้อมูลเก่าสุดเทียบกับวันสร้าง
+    if worst > MAX_DATA_LAG_DAYS:
+        return CheckResult("data_lag", cat, FAIL,
+                           f"ข้อมูลล้าหลัง {worst} วันตอนสร้างพยากรณ์ (generated_at - issue_date เกิน "
+                           f"{MAX_DATA_LAG_DAYS}) — น่าจะใช้ข้อมูลเก่า/demo ไม่ใช่ข้อมูลล่าสุด", blocking=True)
+    if worst < -2:
+        return CheckResult("data_lag", cat, FAIL,
+                           f"issue_date ล้ำหน้า generated_at {-worst} วัน — ผิดปกติ (ข้อมูลอนาคต?)", blocking=True)
+    return CheckResult("data_lag", cat, PASS, f"ข้อมูลล้าหลังตอนสร้าง {worst} วัน (<= {MAX_DATA_LAG_DAYS})",
+                       blocking=True)
+
+
+def check_generated_recent(obj: dict) -> CheckResult:
+    """Freshness (WARN): วันนี้ - generated_at — ไฟล์ถูก refresh ล่าสุดเมื่อไร (ไม่ block)."""
+    cat = "freshness"
+    gen = _parse_generated_date(obj)
+    if gen is None:
+        return CheckResult("generated_recent", cat, WARN, "generated_at parse ไม่ได้")
+    age = (_today() - gen).days
+    if age > MAX_GENERATED_AGE_DAYS:
+        return CheckResult("generated_recent", cat, WARN,
+                           f"พยากรณ์ถูกสร้างมาแล้ว {age} วัน (เกิน {MAX_GENERATED_AGE_DAYS}) — ควร re-run ให้สด")
+    return CheckResult("generated_recent", cat, PASS, f"สร้างเมื่อ {age} วันก่อน")
 
 
 def check_all_high_fraction(obj: dict) -> CheckResult:
@@ -88,22 +126,33 @@ def check_ratio_bounds(obj: dict) -> CheckResult:
     return CheckResult("ratio_bounds", cat, PASS, f"ratio_vs_normal สูงสุด {worst}")
 
 
-FRESHNESS_PLAUSIBILITY = [check_issue_date_fresh, check_all_high_fraction, check_ratio_bounds]
+FRESHNESS_PLAUSIBILITY = [check_data_lag, check_generated_recent, check_all_high_fraction, check_ratio_bounds]
 
 
 def _selftest() -> None:
-    today = _today().isoformat()
-    good = {"provinces": [
-        {"issue_date": today, "forecasts": [{"risk_level_en": "Normal", "ratio_vs_normal": 1.2}]},
-        {"issue_date": today, "forecasts": [{"risk_level_en": "Low", "ratio_vs_normal": 0.8}]},
+    from datetime import timedelta
+    now_iso = datetime.now(timezone.utc).isoformat()
+    today = _today()
+    # พยากรณ์สดจริง: สร้างวันนี้ ใช้ข้อมูลล่าสุด ~16 วันก่อน (ERA5 ล่าช้า) -> ต้องผ่าน
+    op_issue = (today - timedelta(days=16)).isoformat()
+    good = {"generated_at": now_iso, "provinces": [
+        {"issue_date": op_issue, "forecasts": [{"risk_level_en": "Normal", "ratio_vs_normal": 1.2}]},
+        {"issue_date": op_issue, "forecasts": [{"risk_level_en": "Low", "ratio_vs_normal": 0.8}]},
     ]}
-    assert check_issue_date_fresh(good).status == PASS
+    assert check_data_lag(good).status == PASS, "พยากรณ์สด (lag 16 วัน) ต้องผ่าน data_lag"
+    assert check_generated_recent(good).status == PASS
     assert check_all_high_fraction(good).status == PASS
-    # negative: ข้อมูลเก่า 2023 ต้อง FAIL + blocking
-    stale = {"provinces": [{"issue_date": "2023-12-31",
+    # negative: demo — สร้าง 2026 แต่ใช้ข้อมูล 2023 (gap ~898 วัน) ต้อง FAIL + blocking
+    stale = {"generated_at": now_iso, "provinces": [{"issue_date": "2023-12-31",
                             "forecasts": [{"risk_level_en": "High", "ratio_vs_normal": 4.0}]}]}
-    r = check_issue_date_fresh(stale)
-    assert r.status == FAIL and r.blocking, "ข้อมูลเก่าต้อง FAIL+blocking"
+    r = check_data_lag(stale)
+    assert r.status == FAIL and r.blocking, "demo (ข้อมูล 2023) ต้อง FAIL+blocking"
+    # negative: generated_at เก่า -> generated_recent = WARN (ไม่ block)
+    old_gen = {"generated_at": (datetime.now(timezone.utc) - timedelta(days=40)).isoformat(),
+               "provinces": [{"issue_date": (today - timedelta(days=46)).isoformat(),
+                              "forecasts": [{"risk_level_en": "Normal", "ratio_vs_normal": 1.0}]}]}
+    assert check_generated_recent(old_gen).status == WARN
+    assert not check_generated_recent(old_gen).blocking
     # ทุกจังหวัด High ทุก lead = WARN (ไม่ใช่ FAIL/blocking — อาจเป็นสัญญาณจริงช่วง El Nino)
     allhigh = {"provinces": [{"issue_date": today, "forecasts": [{"risk_level_en": "High", "ratio_vs_normal": 5.0}]}
                              for _ in range(10)]}

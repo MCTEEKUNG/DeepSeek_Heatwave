@@ -52,7 +52,7 @@ audit/gate **อ่าน** `docs/forecast.json`, `docs/forecast_provinces.json`
 
 | หมวด | คำถาม | เช็คตัวอย่าง | blocking? |
 |---|---|---|---|
-| 1. Freshness | ข้อมูลสดจริงไหม | `issue_date` ห่างจากวันนี้ ≤ ~10 วัน (ไม่ใช่แค่ `generated_at`); ตรวจ "demo path" ไม่หลุดขึ้น publish | ✅ |
+| 1. Freshness | ข้อมูลสดจริงไหม | วัด **`generated_at - issue_date`** ≤ 30 วัน (ข้อมูลล้าหลังตอนสร้าง) — แยก demo(gap ~898 วัน) จากพยากรณ์สด(ERA5 ล่าช้า ~16 วัน) ; ไม่ใช่ `วันนี้-issue_date` ที่บล็อกพยากรณ์สดผิดๆ. + generated_recent (WARN) | ✅ |
 | 2. Plausibility | ตัวเลขดูแปลกไหม | สัดส่วนจังหวัด High พร้อมกัน (WARN เท่านั้น ‼️ ไม่ block — อาจเป็นสัญญาณ El Niño จริง), `ratio_vs_normal` ≤ เพดาน (WARN) | WARN |
 | 3. Data quality | วัตถุดิบครบ/ดีไหม | NaN เกินเกณฑ์, domain guard (`in_training_domain`), feature อยู่ในช่วงเทรน, MJO-impute flag | บางตัว ✅ |
 | 4. Skill/calibration | โมเดลแม่นกว่าเดาไหม | BSS vs climatology ยังเป็นบวก (อ่านจาก outputs/analysis); reliability ไม่ bias สูงผิดปกติ | WARN |

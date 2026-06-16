@@ -22,9 +22,11 @@ def run_gate(obj: dict) -> tuple[bool, list]:
 
 
 def _selftest() -> None:
-    from datetime import datetime, timezone
-    today = datetime.now(timezone.utc).date().isoformat()
-    good = {"provinces": [{"code": "BKK", "issue_date": today, "warnings": [],
+    from datetime import datetime, timezone, timedelta
+    now_iso = datetime.now(timezone.utc).isoformat()
+    # พยากรณ์สด: สร้างวันนี้ ใช้ข้อมูลล่าสุด ~16 วันก่อน (ERA5 ล่าช้า)
+    op_issue = (datetime.now(timezone.utc).date() - timedelta(days=16)).isoformat()
+    good = {"generated_at": now_iso, "provinces": [{"code": "BKK", "issue_date": op_issue, "warnings": [],
             "forecasts": [{"lead_weeks": L, "probability": 0.3, "risk_level_en": "Normal",
                            "ratio_vs_normal": 1.1} for L in (2, 3, 4, 5, 6)]}]}
     ok, blk = run_gate(good)

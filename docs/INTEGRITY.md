@@ -66,7 +66,10 @@ beats persistence (q<0.05 BH-FDR):  5/5 leads
 (แก้บน branch `feat/operational-province-mode`) + `check_staleness` ดูแค่ `generated_at` ไม่ดู `issue_date`.
 
 ชุดเช็ค `scripts/readiness/` (5 หมวด, อ่าน contract/artifact ไม่ retrain):
-- **freshness** (blocking): `issue_date` ≤ 10 วัน — จับ demo 2023 ได้ (898 วัน → NO-GO).
+- **freshness** (blocking): วัด **`generated_at - issue_date`** (ข้อมูลล้าหลังตอนสร้างแค่ไหน) ≤ 30 วัน —
+  ไม่ใช่ `วันนี้ - issue_date` เพราะพยากรณ์สดที่ ERA5 ล่าช้าก็ห่างวันนี้ ~16 วันโดยชอบ. demo 2023 gap ~898 วัน
+  → NO-GO ; พยากรณ์สด Phase 1 (issue 2026-05-31, gen วันนี้) gap 16 วัน → ผ่าน (ยืนยัน integration แล้ว).
+  + `generated_recent` (WARN): วันนี้ - generated_at ≤ 14 วัน (ไฟล์ถูก refresh ไหม).
 - **plausibility** (WARN เท่านั้น): all-High fraction, ratio cap — **ไม่ block** เพราะ El Niño แรงจริงทำให้
   เกือบทุกจังหวัด High ได้ (สัญญาณถูกต้อง) ; freshness คือตัวแยก demo ที่ถูกต้อง.
 - **data_quality** (blocking): probability ใน [0,1] ไม่ NaN, leads ครบ {2..6}, ธง MJO-impute.
