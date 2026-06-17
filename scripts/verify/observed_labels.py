@@ -100,8 +100,8 @@ def build_labeled_frame(
     Returns
     -------
     pd.DataFrame
-        Columns: FEATURES_P (28) + ["province_id", "date",
-        "y_rm_l2", "y_rm_l3", "y_rm_l4", "y_rm_l5", "y_rm_l6"].
+        Columns: FEATURES_P (28) + "doy" (non-model, for climatology baseline)
+        + "province_id" + "date" + y_rm_l{L} per lead.
         y_rm_l{L} is 1.0 / 0.0 / NaN (NaN = window not yet closed).
     """
     def log(m: str) -> None:
@@ -141,7 +141,7 @@ def build_labeled_frame(
             "sm1": province_series(sm1_grid, r.lat, r.lon),
             "sm3": province_series(sm3_grid, r.lat, r.lon),
             "tmax_rm": province_series(t_grid, r.lat, r.lon),
-            "hot_rm": province_series(hot_grid.astype(float), r.lat, r.lon),
+            "hot_rm": province_series(hot_grid, r.lat, r.lon),
         }).sort_index()
 
         feat = lookback_features(daily)
@@ -155,7 +155,7 @@ def build_labeled_frame(
         feat["date"] = feat.index
 
         # --- observed labels (hw_grid already has full-series streak detection) ---
-        hw_rm = province_series(hw_grid.astype(float), r.lat, r.lon).sort_index()
+        hw_rm = province_series(hw_grid, r.lat, r.lon).sort_index()
         tg = weekly_event_targets(hw_rm, leads)           # NaN for incomplete windows
         tg = tg.rename(columns={f"lead{L}": f"y_rm_l{L}" for L in leads})
         tg["province_id"] = int(r.id)
@@ -163,7 +163,7 @@ def build_labeled_frame(
 
         feat_r = feat.reset_index(drop=True)
         tg_r = tg.reset_index(drop=True)
-        frames.append(feat_r.merge(tg_r.drop(columns=["province_id"]), on="date", how="left"))
+        frames.append(feat_r.merge(tg_r, on=["province_id", "date"], how="left"))
 
     log(f"[verify] รวม {len(pv)} จังหวัด เสร็จแล้ว")
     return pd.concat(frames, ignore_index=True)
