@@ -16,7 +16,9 @@ ROOT = Path(__file__).resolve().parent.parent.parent  # scripts/verify/ -> scrip
 OUT_DIR = ROOT / "outputs" / "operational" / "forecasts"
 
 # Allow `from build_provinces_dataset import ...` and `from verify.observed_labels import ...`
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # scripts/ dir
+_scripts_dir = str(Path(__file__).resolve().parent.parent)  # scripts/ dir
+if _scripts_dir not in sys.path:
+    sys.path.insert(0, _scripts_dir)
 
 logger = logging.getLogger(__name__)
 
@@ -97,24 +99,26 @@ def verify_closed_windows(observed_data_dir: Path) -> int:
     already_scored: set[tuple[str, int]] = set()
     if op_pairs_path.exists():
         existing = pd.read_csv(op_pairs_path, usecols=["issue_date", "lead"])
-        already_scored = set(zip(existing["issue_date"].astype(str), existing["lead"].astype(int)))
+        already_scored = set(zip(
+            existing["issue_date"].apply(lambda x: pd.Timestamp(x).strftime("%Y-%m-%d")),
+            existing["lead"].astype(int),
+        ))
 
     # 4. Process each archived forecast
-    leads = [2, 3, 4, 5, 6]
+    leads = [2, 3, 4, 5, 6]  # must match build_dataset.LEADS
     new_rows: list[dict] = []
 
     for fc_file in forecast_files:
         try:
             obj = json.loads(fc_file.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError) as e:
+            provinces_list = obj.get("provinces", [])
+            if not provinces_list:
+                continue
+            issue_date_str = pd.Timestamp(provinces_list[0]["issue_date"]).strftime("%Y-%m-%d")
+            issue_ts = pd.Timestamp(issue_date_str)
+        except (json.JSONDecodeError, OSError, KeyError, IndexError, ValueError) as e:
             logger.warning("[verify] ไม่สามารถอ่าน %s: %s", fc_file, e)
             continue
-
-        provinces_list = obj.get("provinces", [])
-        if not provinces_list:
-            continue
-        issue_date_str = provinces_list[0]["issue_date"]
-        issue_ts = pd.Timestamp(issue_date_str)
 
         for L in leads:
             window_close = issue_ts + pd.Timedelta(days=7 * L + 6)
