@@ -140,6 +140,14 @@ def main() -> int:
             return 1
     sync(DOCS_JSON, args.frontend or default_frontend())
 
+    if args.operational:
+        from verify.archive import archive_forecast
+        dest = archive_forecast(DOCS_JSON)
+        if dest is not None:
+            print(f"[OK] forecast archived -> {dest}")
+        else:
+            print(f"[ข้าม] forecast already archived for {new_issue}")
+
     if args.publish:
         publish_contract(default_contract())
     return 0
