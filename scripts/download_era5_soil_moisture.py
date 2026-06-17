@@ -73,6 +73,8 @@ def is_valid(path: Path, layer: int) -> bool:
 
 def main(year_start: int = YEAR_START, year_end: int = YEAR_END, out_dir: Path = OUT_DIR) -> int:
     out_dir = Path(out_dir)
+    if year_start > year_end:
+        raise ValueError(f"year_start ({year_start}) must be <= year_end ({year_end})")
     out_dir.mkdir(parents=True, exist_ok=True)
     client = cdsapi.Client()
     years = list(range(year_start, year_end + 1))

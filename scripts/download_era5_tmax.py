@@ -4,6 +4,10 @@
   - แบ่งดึง "ทีละปี" (1 request/ปี ~2 MB) ไม่ใช่ก้อนใหญ่ก้อนเดียว
   - resume ได้: ปีไหนมีไฟล์ valid อยู่แล้ว จะข้าม
   - ตรวจไฟล์ทุกปีด้วยด่านหน่วย (units_utils) หลังดาวน์โหลด
+
+ใช้งาน:
+  python download_era5_tmax.py                                                    # 1994-2023 (default)
+  python download_era5_tmax.py --year-start 2024 --year-end 2025 --out-dir data/raw_backtest/tmax_thailand/
 """
 from __future__ import annotations
 
@@ -63,6 +67,8 @@ def is_valid(path: Path) -> bool:
 
 def main(year_start: int = YEAR_START, year_end: int = YEAR_END, out_dir: Path = OUT_DIR) -> int:
     out_dir = Path(out_dir)
+    if year_start > year_end:
+        raise ValueError(f"year_start ({year_start}) must be <= year_end ({year_end})")
     out_dir.mkdir(parents=True, exist_ok=True)
     client = cdsapi.Client()
     years = list(range(year_start, year_end + 1))
