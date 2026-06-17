@@ -61,17 +61,18 @@ def is_valid(path: Path) -> bool:
         return False
 
 
-def main() -> int:
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+def main(year_start: int = YEAR_START, year_end: int = YEAR_END, out_dir: Path = OUT_DIR) -> int:
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
     client = cdsapi.Client()
-    years = list(range(YEAR_START, YEAR_END + 1))
+    years = list(range(year_start, year_end + 1))
 
-    print(f"=== ดึง Tmax เฉพาะไทย {YEAR_START}-{YEAR_END} ({len(years)} ปี) ===")
-    print(f"ปลายทาง: {OUT_DIR}\n")
+    print(f"=== ดึง Tmax เฉพาะไทย {year_start}-{year_end} ({len(years)} ปี) ===")
+    print(f"ปลายทาง: {out_dir}\n")
 
     done, skipped, failed = [], [], []
     for i, year in enumerate(years, 1):
-        out_file = OUT_DIR / f"era5_tmax_thailand_{year}.nc"
+        out_file = out_dir / f"era5_tmax_thailand_{year}.nc"
         tag = f"[{i:2d}/{len(years)}] {year}"
 
         if is_valid(out_file):
@@ -104,4 +105,22 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="ดึง ERA5 daily Tmax สำหรับประเทศไทย (ทีละปี, resume ได้)"
+    )
+    parser.add_argument(
+        "--year-start", type=int, default=YEAR_START,
+        help=f"ปีเริ่มต้น (default: {YEAR_START})",
+    )
+    parser.add_argument(
+        "--year-end", type=int, default=YEAR_END,
+        help=f"ปีสิ้นสุด (default: {YEAR_END})",
+    )
+    parser.add_argument(
+        "--out-dir", type=Path, default=OUT_DIR,
+        help=f"โฟลเดอร์ปลายทาง (default: {OUT_DIR})",
+    )
+    args = parser.parse_args()
+    sys.exit(main(args.year_start, args.year_end, args.out_dir))

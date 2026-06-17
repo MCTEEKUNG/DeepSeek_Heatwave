@@ -7,8 +7,9 @@
 - daily_mean, หน่วย m^3/m^3 (0-1), แบ่งทีละปี+ชั้น, resume ได้
 
 ใช้งาน:
-  python download_era5_soil_moisture.py            # ดึงครบ 1994-2023
-  python download_era5_soil_moisture.py 2023       # ทดสอบเฉพาะปีที่ระบุ
+  python download_era5_soil_moisture.py                                             # ดึงครบ 1994-2023
+  python download_era5_soil_moisture.py --year-start 2024 --year-end 2025          # backtest 2024-2025
+  python download_era5_soil_moisture.py --out-dir data/raw_backtest/soil_moisture/  # กำหนด output เอง
 """
 from __future__ import annotations
 
@@ -70,18 +71,20 @@ def is_valid(path: Path, layer: int) -> bool:
         return False
 
 
-def main(years: list[int]) -> int:
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+def main(year_start: int = YEAR_START, year_end: int = YEAR_END, out_dir: Path = OUT_DIR) -> int:
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
     client = cdsapi.Client()
+    years = list(range(year_start, year_end + 1))
     jobs = [(y, n) for y in years for n in SOIL_LAYERS]
 
-    print(f"=== ดึง Soil Moisture ชั้น {SOIL_LAYERS} เฉพาะไทย {years[0]}-{years[-1]} (ม.ค.-ก.ค.) ===")
+    print(f"=== ดึง Soil Moisture ชั้น {SOIL_LAYERS} เฉพาะไทย {year_start}-{year_end} (ม.ค.-ก.ค.) ===")
     print(f"จำนวนคำขอ: {len(jobs)} (={len(years)} ปี x {len(SOIL_LAYERS)} ชั้น)")
-    print(f"ปลายทาง: {OUT_DIR}\n")
+    print(f"ปลายทาง: {out_dir}\n")
 
     done, skipped, failed = [], [], []
     for i, (year, layer) in enumerate(jobs, 1):
-        out_file = OUT_DIR / f"era5_sm_l{layer}_thailand_{year}.nc"
+        out_file = out_dir / f"era5_sm_l{layer}_thailand_{year}.nc"
         tag = f"[{i:3d}/{len(jobs)}] {year} L{layer}"
 
         if is_valid(out_file, layer):
@@ -114,8 +117,22 @@ def main(years: list[int]) -> int:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        yrs = [int(a) for a in sys.argv[1:]]
-    else:
-        yrs = list(range(YEAR_START, YEAR_END + 1))
-    sys.exit(main(yrs))
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="ดึง ERA5 daily Soil Moisture สำหรับประเทศไทย (ทีละปี+ชั้น, resume ได้)"
+    )
+    parser.add_argument(
+        "--year-start", type=int, default=YEAR_START,
+        help=f"ปีเริ่มต้น (default: {YEAR_START})",
+    )
+    parser.add_argument(
+        "--year-end", type=int, default=YEAR_END,
+        help=f"ปีสิ้นสุด (default: {YEAR_END})",
+    )
+    parser.add_argument(
+        "--out-dir", type=Path, default=OUT_DIR,
+        help=f"โฟลเดอร์ปลายทาง (default: {OUT_DIR})",
+    )
+    args = parser.parse_args()
+    sys.exit(main(args.year_start, args.year_end, args.out_dir))
