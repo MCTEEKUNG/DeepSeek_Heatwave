@@ -54,7 +54,7 @@ def archive_forecast(forecast_json_path: Path) -> Path | None:
     return dest
 
 
-def verify_closed_windows(observed_data_root: Path) -> int:
+def verify_closed_windows(observed_data_dir: Path) -> int:
     """Score archived forecasts whose target windows have since closed.
 
     Appends new (issue_date, province_id, lead, probability, base_rate, y_obs)
@@ -63,7 +63,7 @@ def verify_closed_windows(observed_data_root: Path) -> int:
 
     Parameters
     ----------
-    observed_data_root : Path
+    observed_data_dir : Path
         Root dir containing tmax_thailand/ and soil_moisture_thailand/ subdirs.
         Examples: data/raw_backtest/, data/raw_recent/
 
@@ -83,8 +83,8 @@ def verify_closed_windows(observed_data_root: Path) -> int:
         return 0
 
     # 2. Build observed labels
-    tmax_dir = observed_data_root / "tmax_thailand"
-    soil_dir = observed_data_root / "soil_moisture_thailand"
+    tmax_dir = observed_data_dir / "tmax_thailand"
+    soil_dir = observed_data_dir / "soil_moisture_thailand"
     clim = _load_frozen_climatology()
     frozen_thr90 = clim["thr90_grid"]
 
