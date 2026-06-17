@@ -49,8 +49,8 @@ REGION = "Thailand"
 RISK_BANDS = [
     (0.75, "ต่ำ", "Low"),
     (1.5, "ปกติ", "Normal"),
-    (2.5, "สูง", "Elevated"),
-    (float("inf"), "สูงมาก", "High"),
+    (2.5, "ค่อนข้างสูง", "Elevated"),
+    (float("inf"), "สูง", "High"),
 ]
 
 
