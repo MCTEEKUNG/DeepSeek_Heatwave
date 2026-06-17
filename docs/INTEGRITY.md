@@ -58,3 +58,24 @@ bootstrap CI (block=~28d) + paired BH-FDR, vs climatology AND persistence:
 
 beats climatology (BSS 95% CI > 0): 5/5 leads
 beats persistence (q<0.05 BH-FDR):  5/5 leads
+
+## Production-Readiness Audit & Gate (2026-06-16)
+ดีไซน์: `docs/superpowers/specs/2026-06-16-production-readiness-audit-design.md`.
+แรงจูงใจ: contract สาธารณะแสดง `issue_date 2023-12-31` (demo backtest ช่วง El Niño) ทุกจังหวัด
+"สูงมาก" ราวกับเป็นพยากรณ์ปัจจุบัน → เสี่ยงตื่นตระหนก. root cause: per-province ไม่มี operational mode
+(แก้บน branch `feat/operational-province-mode`) + `check_staleness` ดูแค่ `generated_at` ไม่ดู `issue_date`.
+
+ชุดเช็ค `scripts/readiness/` (5 หมวด, อ่าน contract/artifact ไม่ retrain):
+- **freshness** (blocking): วัด **`generated_at - issue_date`** (ข้อมูลล้าหลังตอนสร้างแค่ไหน) ≤ 30 วัน —
+  ไม่ใช่ `วันนี้ - issue_date` เพราะพยากรณ์สดที่ ERA5 ล่าช้าก็ห่างวันนี้ ~16 วันโดยชอบ. demo 2023 gap ~898 วัน
+  → NO-GO ; พยากรณ์สด Phase 1 (issue 2026-05-31, gen วันนี้) gap 16 วัน → ผ่าน (ยืนยัน integration แล้ว).
+  + `generated_recent` (WARN): วันนี้ - generated_at ≤ 14 วัน (ไฟล์ถูก refresh ไหม).
+- **plausibility** (WARN เท่านั้น): all-High fraction, ratio cap — **ไม่ block** เพราะ El Niño แรงจริงทำให้
+  เกือบทุกจังหวัด High ได้ (สัญญาณถูกต้อง) ; freshness คือตัวแยก demo ที่ถูกต้อง.
+- **data_quality** (blocking): probability ใน [0,1] ไม่ NaN, leads ครบ {2..6}, ธง MJO-impute.
+- **skill** (WARN): อ่าน `outputs/analysis/provinces_pooled_bss.csv` — BSS บวกทุก lead.
+- **communication** (WARN): UI สื่อ "ความน่าจะเป็น/โอกาสเกิด" + โชว์ issue_date.
+
+gate เสียบใน **`publish_bridge.validate_file`** (ประตูจริงที่ `--publish` ใช้) + `validate_contract.main`
+→ FAIL = abort ก่อน distribute. negative selftest: stale/bad-prob → บล็อกจริง.
+รัน: `python scripts/readiness/audit.py` → `docs/readiness/AUDIT-*.md` (go/no-go).

@@ -54,3 +54,14 @@ python scripts/validate_contract.py                     # ตรวจ gate
 - risk ใช้ **base_rate รายจังหวัด** (แช่แข็งใน climatology_provinces.pkl) ต่างจาก default เดิมที่ pooled
 - e2e test ต้องรัน predict operational ก่อน: `python -m pytest scripts/test_operational_provinces.py`
 - การย้าย loop ไปรันอัตโนมัติบน CI = Part 2 (GitHub Actions cron) — spec แยก
+
+## E. Production-readiness audit + gate
+hard gate (freshness/plausibility/data-quality) ถูกเสียบใน `validate_file` ของ publish_bridge อยู่แล้ว
+(และใน `validate_contract.py`) → contract ที่ issue_date เก่า/ข้อมูลเสีย จะ **abort ก่อน distribute เอง**.
+```
+python scripts/readiness/gate.py             # เช็ค blocking subset อย่างเดียว (exit 1 ถ้าไม่ผ่าน)
+python scripts/readiness/gate.py test        # negative selftest (stale/bad-prob -> ต้องบล็อก)
+python scripts/readiness/audit.py            # รายงานเต็ม 5 หมวด -> docs/readiness/AUDIT-YYYY-MM-DD.md (go/no-go)
+```
+- gate **freshness** จับ "ข้อมูลล้าหลังตอนสร้าง (generated_at - issue_date) > 30 วัน" (เช่น demo 2023 ที่ gap ~898 วัน) — กันพยากรณ์เก่าหลุดขึ้นเว็บ ; พยากรณ์สดที่ ERA5 ล่าช้า ~6-16 วันยังผ่าน
+- ก่อน publish จริง: ออก forecast operational (section C) → `audit.py` ต้องขึ้น GO ก่อน
