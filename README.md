@@ -1,9 +1,13 @@
 # DeepSeek_Heatwave — Sub-seasonal Heatwave Probability Prediction (Thailand)
 
 งานวิทยานิพนธ์: ทำนาย**ความน่าจะเป็น**ของการเกิดคลื่นความร้อนในประเทศไทย
-ล่วงหน้า **2–6 สัปดาห์ (sub-seasonal)** ด้วย classical ML บนข้อมูลตาราง
+ล่วงหน้า **2–4 สัปดาห์ (sub-seasonal)** ด้วย classical ML บนข้อมูลตาราง
 (soil moisture + climate indices) — รายละเอียดดีไซน์เต็มอยู่ที่
 `docs/superpowers/specs/2026-06-08-heatwave-subseasonal-prediction-design.md`
+
+> **Lead range:** โมเดลเทรนบน lead 2–6 สัปดาห์ แต่แสดงผลเฉพาะ **lead 2–4**
+> เพราะ lead 5–6 ไม่มี discrimination skill (BSS < 0 หรือ AUC < 0.5 ตาม backtest)
+> Lead 4 มี skill อ่อน (BSS +0.073, AUC 0.569) — แสดงพร้อม "Weakening skill" label
 
 ## นิยามหลัก
 
@@ -57,6 +61,15 @@ docs/     spec และเอกสาร
 ```
 pip install -r requirements.txt
 ```
+
+## สถานะ (2026-06-19) — operational + automated ✅
+
+- [x] forecast รายจังหวัด 77 จังหวัด (lead 2–4 สัปดาห์) — `predict_provinces.py`
+- [x] แสดงเฉพาะ lead 2–4 (5–6 ซ่อน เพราะไม่มี skill)
+- [x] publish pipeline: `publish_bridge.py --publish` → validate → GitHub Pages
+- [x] GitHub Actions รันอัตโนมัติทุกวันจันทร์ (ดึง ERA5 + predict + push Pages)
+- [x] Frontend deploy บน Vercel: [heat-map-frontend.vercel.app](https://heat-map-frontend.vercel.app)
+- [x] `EXPO_PUBLIC_FORECAST_URL` ชี้ไป GitHub Pages ถูกต้อง
 
 ## สถานะ (2026-06-11) — pipeline รอบแรกครบ ✅
 
