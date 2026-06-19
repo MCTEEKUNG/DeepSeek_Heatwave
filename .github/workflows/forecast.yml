@@ -1,9 +1,15 @@
 name: Weekly heatwave forecast
 
 # พยากรณ์อัตโนมัติทุกสัปดาห์ (ผู้ดูแลไม่ต้องทำอะไร) :
-#   ดึง ERA5 ~70 วันล่าสุด + ดัชนี MJO/Niño -> predict (operational) -> commit docs/forecast.json
+#   ดึง ERA5 ~70 วันล่าสุด + ดัชนี MJO/Niño -> predict_provinces (operational)
+#   -> validate + readiness gate -> commit docs/forecast_provinces.json
+#   -> push ไป heatwave-contract (GitHub Pages) -> frontend ดึงอัตโนมัติ
 # ถ้า CDS ล่ม/คิวช้า -> step ดาวน์โหลด fail -> ไม่ commit -> เว็บยังโชว์พยากรณ์รอบก่อน
 # GitHub ส่งอีเมลแจ้งอัตโนมัติเมื่อ workflow fail (ไม่ต้องตั้งเพิ่ม)
+#
+# Secrets ที่ต้องตั้งใน repo settings:
+#   CDSAPIRC          — ข้อความเต็มของ ~/.cdsapirc (url + key)
+#   GH_CONTRACT_TOKEN — GitHub PAT ที่มีสิทธิ์ write ใน MCTEEKUNG/heatwave-contract
 
 on:
   schedule:
@@ -11,7 +17,7 @@ on:
   workflow_dispatch: {}       # กดรันเองได้จากหน้า Actions
 
 permissions:
-  contents: write             # ให้ commit + push docs/forecast.json กลับ repo ได้
+  contents: write             # ให้ commit + push docs/forecast_provinces.json กลับ repo ได้
 
 concurrency:
   group: forecast
@@ -21,8 +27,19 @@ jobs:
   forecast:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      BRIDGE_CONTRACT_DIR: ${{ github.workspace }}/heatwave-contract
+      BRIDGE_FRONTEND_DIR: ${{ github.workspace }}/frontend_sink
+
     steps:
       - uses: actions/checkout@v4
+
+      - name: Checkout heatwave-contract (sink สำหรับ GitHub Pages)
+        uses: actions/checkout@v4
+        with:
+          repository: MCTEEKUNG/heatwave-contract
+          path: heatwave-contract
+          token: ${{ secrets.GH_CONTRACT_TOKEN }}
 
       - uses: actions/setup-python@v5
         with:
@@ -41,29 +58,22 @@ jobs:
       - name: รีเฟรชดัชนี MJO + Niño3.4
         run: python scripts/download_indices.py
 
-      - name: ทำนาย (operational) -> docs/forecast.json
-        run: python scripts/predict.py operational
-
-      - name: ตรวจ forecast.json ก่อน commit (ปลอดภัย)
+      - name: ตั้งค่า git identity สำหรับ heatwave-contract push
         run: |
-          python - <<'PY'
-          import json, sys
-          fc = json.load(open("docs/forecast.json", encoding="utf-8"))
-          assert len(fc["forecasts"]) == 5, "ต้องมี 5 lead"
-          for f in fc["forecasts"]:
-              p = f["probability"]
-              assert 0.0 <= p <= 1.0, f"prob หลุดช่วง: {p}"
-          print("forecast.json ผ่านการตรวจ:", fc["issue_date"])
-          PY
+          git -C "$BRIDGE_CONTRACT_DIR" config user.name  "github-actions[bot]"
+          git -C "$BRIDGE_CONTRACT_DIR" config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Commit + push ถ้ามีการเปลี่ยนแปลง
+      - name: ทำนาย (operational) + validate + publish -> GitHub Pages
+        run: python scripts/publish_bridge.py --publish
+
+      - name: Commit docs/forecast_provinces.json กลับ repo หลัก
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/forecast.json
+          git add docs/forecast_provinces.json
           if git diff --staged --quiet; then
             echo "ไม่มีการเปลี่ยนแปลง — ข้ามการ commit"
           else
-            git commit -m "chore: อัปเดตพยากรณ์อัตโนมัติ $(date -u +%Y-%m-%d)"
+            git commit -m "data: อัปเดตพยากรณ์รายจังหวัด $(date -u +%Y-%m-%d)"
             git push
           fi
