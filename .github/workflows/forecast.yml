@@ -75,6 +75,10 @@ jobs:
             echo "ไม่มีการเปลี่ยนแปลง — ข้ามการ commit"
           else
             git commit -m "data: อัปเดตพยากรณ์รายจังหวัด $(date -u +%Y-%m-%d)"
-            git pull --rebase origin main
-            git push
+            for attempt in 1 2 3; do
+              echo "Push attempt $attempt/3..."
+              git pull --rebase origin main && git push && break
+              echo "Attempt $attempt failed — waiting 10s before retry"
+              sleep 10
+            done
           fi
