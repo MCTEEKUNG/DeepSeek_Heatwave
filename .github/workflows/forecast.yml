@@ -75,5 +75,6 @@ jobs:
             echo "ไม่มีการเปลี่ยนแปลง — ข้ามการ commit"
           else
             git commit -m "data: อัปเดตพยากรณ์รายจังหวัด $(date -u +%Y-%m-%d)"
+            git pull --rebase origin main
             git push
           fi
