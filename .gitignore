@@ -16,8 +16,11 @@ venv/
 Thumbs.db
 desktop.ini
 
-# outputs ??????????? (???????????????? train.py)
-outputs/
+# outputs — model artifacts (regenerable) are excluded; verification results are tracked
+outputs/*
+!outputs/operational/
+outputs/operational/*
+!outputs/operational/verification/
 
 # tool artifacts
 .playwright-mcp/

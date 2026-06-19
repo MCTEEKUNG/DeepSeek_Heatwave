@@ -34,7 +34,7 @@ SOIL_LAYERS = [1, 3]
 VAR_NAME = {n: f"volumetric_soil_water_layer_{n}" for n in (1, 2, 3, 4)}
 NC_NAME = {n: f"swvl{n}" for n in (1, 2, 3, 4)}
 
-SM_MIN, SM_MAX = 0.0, 1.0  # ช่วงค่าความชื้นดินเชิงปริมาตรที่สมเหตุสมผล
+SM_MIN, SM_MAX = -1e-4, 1.0  # ยอม -1e-4 สำหรับ floating-point noise บน land-sea mask boundary
 
 OUT_DIR = Path(__file__).resolve().parent.parent / "data" / "raw" / "soil_moisture_thailand"
 ALL_DAYS = [f"{d:02d}" for d in range(1, 32)]
