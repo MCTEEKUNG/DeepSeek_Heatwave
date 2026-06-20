@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>แผนและผลการทดสอบ ML — Heatwave Forecast</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2430; --bd:#2d3543;
+    --tx:#e6edf3; --mut:#9aa7b4; --acc:#ff7b39; --acc2:#ffb02e;
+    --ok:#3fb950; --warn:#d29922; --bad:#f85149; --blue:#58a6ff;
+    --mono:'Cascadia Code',ui-monospace,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);
+    font-family:'Segoe UI','Sarabun','Noto Sans Thai',system-ui,sans-serif;
+    line-height:1.65;font-size:16px}
+  .wrap{max-width:1080px;margin:0 auto;padding:32px 22px 80px}
+  header.hero{background:linear-gradient(135deg,#1a1207 0%,#161b22 60%);
+    border:1px solid var(--bd);border-radius:16px;padding:34px 30px;margin-bottom:24px}
+  .hero h1{margin:0 0 8px;font-size:1.9rem;letter-spacing:.2px}
+  .hero .sub{color:var(--mut);font-size:1.02rem}
+  .badges{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+  .badge{font-size:.8rem;padding:4px 11px;border-radius:999px;border:1px solid var(--bd);
+    background:var(--panel2);color:var(--mut)}
+  .badge.ok{color:var(--ok);border-color:#214c2c}
+  .badge.acc{color:var(--acc);border-color:#5a2f12}
+  h2{font-size:1.35rem;margin:42px 0 6px;padding-top:10px;border-top:1px solid var(--bd)}
+  h2 .num{color:var(--acc);font-family:var(--mono);margin-right:8px}
+  h3{font-size:1.05rem;margin:22px 0 6px;color:var(--acc2)}
+  p{margin:8px 0}
+  .mut{color:var(--mut)}
+  .card{background:var(--panel);border:1px solid var(--bd);border-radius:12px;
+    padding:18px 20px;margin:14px 0}
+  .why{border-left:3px solid var(--blue);background:#11203a22;padding:10px 16px;
+    border-radius:0 8px 8px 0;margin:12px 0}
+  .why b{color:var(--blue)}
+  .verdict{border-left:3px solid var(--ok);background:#10210f;padding:10px 16px;
+    border-radius:0 8px 8px 0;margin:12px 0}
+  .verdict.warn{border-left-color:var(--warn);background:#211b0b}
+  .verdict.bad{border-left-color:var(--bad);background:#21100f}
+  .spotlight{background:linear-gradient(135deg,#10210f 0%,#161b22 70%);
+    border:1px solid #214c2c;border-radius:14px;padding:20px 24px;margin:18px 0}
+  .spotlight h3{margin-top:0;color:var(--ok)}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:.9rem}
+  th,td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--bd)}
+  th{color:var(--mut);font-weight:600;background:var(--panel2)}
+  td.n,th.n{text-align:right;font-family:var(--mono)}
+  tr:hover td{background:#1c232e}
+  tr.show td{background:#0f1f12}
+  tr.hide td{color:var(--mut)}
+  .pos{color:var(--ok)} .neg{color:var(--bad)} .yes{color:var(--ok);font-weight:700}
+  .no{color:var(--bad);font-weight:700} .meh{color:var(--warn)}
+  pre{background:#0a0e14;border:1px solid var(--bd);border-radius:10px;
+    padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:.82rem;
+    color:#c9d4e0;line-height:1.5}
+  pre .g{color:var(--ok)} pre .o{color:var(--acc2)} pre .m{color:var(--mut)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:14px 0}
+  .stat{background:var(--panel2);border:1px solid var(--bd);border-radius:10px;padding:14px 16px}
+  .stat .big{font-size:1.5rem;font-weight:700;color:var(--acc)}
+  .stat .lbl{color:var(--mut);font-size:.82rem}
+  .toc{columns:2;column-gap:30px}
+  .toc a{color:var(--blue);text-decoration:none;display:block;padding:3px 0;font-size:.92rem}
+  .toc a:hover{text-decoration:underline}
+  code{background:#0a0e14;border:1px solid var(--bd);border-radius:5px;padding:1px 6px;
+    font-family:var(--mono);font-size:.85em;color:var(--acc2)}
+  footer{margin-top:50px;color:var(--mut);font-size:.85rem;border-top:1px solid var(--bd);padding-top:18px}
+  .pill{display:inline-block;font-size:.72rem;padding:2px 8px;border-radius:6px;font-family:var(--mono)}
+  .pill.run{background:#10210f;color:var(--ok);border:1px solid #214c2c}
+  .pill.oos{background:#1a1207;color:var(--acc);border:1px solid #5a2f12}
+  .pill.cite{background:#11203a;color:var(--blue);border:1px solid #1d3a5c}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>🌡️ แผนและผลการทดสอบ ML — โครงการพยากรณ์คลื่นความร้อน</h1>
+  <div class="sub">Sub-seasonal Heatwave Forecast (Thailand) · พยากรณ์ความน่าจะเป็นคลื่นความร้อน<br>
+  เอกสารนี้ <b>ออกแบบการทดสอบ</b> (เหตุผล + วิธี) และ <b>รายงานผลจริง</b> ที่รันได้จาก codebase</div>
+  <div class="badges">
+    <span class="badge acc">งาน: Probabilistic Binary Classification (เหตุการณ์หายาก)</span>
+    <span class="badge ok">ช่วงที่เปิดให้ผู้ใช้เห็น: lead 2–4 สัปดาห์</span>
+    <span class="badge">เทรน lead 2–6 / แสดง 2–4</span>
+    <span class="badge ok">self-test + stress test: ผ่าน (รันสด)</span>
+  </div>
+</header>
+
+<!-- ===== CURRENT STATUS SPOTLIGHT ===== -->
+<div class="spotlight">
+  <h3>📍 สถานะปัจจุบันของระบบ — ช่วงพยากรณ์ที่เปิดสู่ผู้ใช้ = 2–4 สัปดาห์</h3>
+  <p>โมเดล<b>เทรน</b>ครบ lead 2–6 สัปดาห์ (เพื่อความสมบูรณ์ของงานวิจัย) แต่<b>แสดงผลต่อผู้ใช้เฉพาะ lead 2–4</b>
+  การตัดสินใจนี้อิงจาก <b>true out-of-sample backtest</b> (เทรนถึงปี 2023 → ทดสอบ ม.ค.–ก.พ. 2024) ดังนี้:</p>
+  <table>
+  <tr><th class="n">lead</th><th class="n">BSS</th><th class="n">AUC</th><th>คำตัดสิน</th><th class="n">เปิดให้เห็น?</th></tr>
+  <tr class="show"><td class="n">2</td><td class="n pos">+0.298</td><td class="n">0.592</td><td>✅ สกิลแข็ง</td><td class="n yes">เปิด</td></tr>
+  <tr class="show"><td class="n">3</td><td class="n pos">+0.259</td><td class="n">0.686</td><td>✅ สกิลแข็ง (AUC ดีสุด)</td><td class="n yes">เปิด</td></tr>
+  <tr class="show"><td class="n">4</td><td class="n pos">+0.073</td><td class="n">0.569</td><td>✅ สกิลอ่อน — ติดป้าย "Weakening"</td><td class="n yes">เปิด</td></tr>
+  <tr class="hide"><td class="n">5</td><td class="n neg">−0.004</td><td class="n neg">0.437</td><td>❌ ไม่มีสกิล (แพ้ climatology)</td><td class="n no">ซ่อน</td></tr>
+  <tr class="hide"><td class="n">6</td><td class="n meh">+0.189</td><td class="n neg">0.462</td><td>⚠️ BSS บวกลวง — AUC&lt;0.5 แยกแยะไม่ได้</td><td class="n no">ซ่อน</td></tr>
+  </table>
+  <p style="margin-bottom:0"><b>เหตุผลที่ตัดที่ lead 4:</b> (1) <b>สกิล</b> — lead 5 แพ้ baseline จริง, lead 6 ดู BSS บวกแต่
+  AUC&lt;0.5 = ทายค่าใกล้ค่าเฉลี่ยตลอด ไม่ได้แยกแยะเหตุการณ์ (calibration artefact)
+  (2) <b>ความรับผิดชอบ</b> — ไม่ออกคำเตือนระยะไกลที่สกิลต่ำ เพื่อกันปัญหา "cry wolf"
+  (เตือนผิดบ่อยจนคนเลิกเชื่อ) ตรงตามวัตถุประสงค์ "ไม่ก่อความวุ่นวายโดยมิใช่เหตุ"</p>
+</div>
+
+<div class="card">
+  <b>วิธีอ่าน + ที่มาของตัวเลข</b> — มี 3 ป้ายกำกับ:
+  <span class="pill run">รันสดในรอบนี้</span> ·
+  <span class="pill oos">backtest จริง OOS (ม.ค.–ก.พ. 2024)</span> = ผลที่ใช้ตัดสินใจ operational ·
+  <span class="pill cite">ผลวิจัย CV ที่ freeze 2026-06-13</span> = การประเมินเต็ม lead 2–6 ในเฟสวิจัย
+  <p class="mut" style="margin-top:10px">⚠️ แยกให้ชัด 3 อย่าง: (ก) <b>self-test ผ่าน</b> = เครื่องมือวัดถูกต้อง (ไม่ใช่โมเดลเก่ง)
+  (ข) <b>ผล CV เฟสวิจัย</b> = สกิลในกรอบ blocked-CV (มองโลกแง่ดีกว่า) (ค) <b>ผล OOS</b> = ความจริงตอนใช้งานจริง
+  ซึ่งเข้มกว่าและเป็นตัวกำหนดว่าจะเปิด lead ไหน</p>
+</div>
+
+<h2 id="map"><span class="num">★</span>การจับคู่: กรอบทดสอบ ML มาตรฐาน ↔ สิ่งที่โครงการมีจริง</h2>
+<p class="mut">6 อันดับที่กรรมการให้น้ำหนักมากสุด ทำครบ (⭐)</p>
+<table>
+<tr><th>ขั้นทดสอบ</th><th>หลักฐานในโครงการ</th><th class="n">สถานะ</th></tr>
+<tr><td>⭐ Test-set / CV performance</td><td><code>cv.py</code> rolling-origin + results_master</td><td class="n yes">✓</td></tr>
+<tr><td>⭐ Cross-Validation เสถียร</td><td>5-fold blocked CV + bootstrap CI</td><td class="n yes">✓</td></tr>
+<tr><td>⭐ Real-World Validation</td><td>true-OOS operational backtest (ม.ค.–ก.พ. 2024)</td><td class="n yes">✓</td></tr>
+<tr><td>⭐ Baseline Comparison</td><td>climatology + persistence + paired test (BH-FDR)</td><td class="n yes">✓</td></tr>
+<tr><td>⭐ Explainability</td><td>permutation importance + ablation (แทน SHAP/LIME)</td><td class="n yes">✓</td></tr>
+<tr><td>⭐ Stress Test</td><td>OOD sweep 25→50°C บนโมเดลจริง</td><td class="n yes">✓</td></tr>
+<tr><td>Metric เหมาะสม</td><td>Brier / BSS / AUC / reliability</td><td class="n yes">✓</td></tr>
+<tr><td>Overfitting Test</td><td>LGBM raw vs Platt-calibrated</td><td class="n yes">✓</td></tr>
+<tr><td>Ablation Test</td><td>leave-one-group-out 4 กลุ่มฟีเจอร์</td><td class="n yes">✓</td></tr>
+<tr><td>UAT</td><td>dashboard + architecture explainer (HTML) + ป้ายสกิล</td><td class="n yes">✓</td></tr>
+</table>
+
+<!-- ============ 1 ============ -->
+<h2 id="t1"><span class="num">1.</span>การแบ่งข้อมูล — Train/Test แบบอนุกรมเวลา (ไม่ใช่ random)</h2>
+<div class="why"><b>ทำไม:</b> ข้อมูลรายวันมี autocorrelation สูง ถ้าใช้ random split โมเดลจะ "เห็นอนาคต"
+ผ่านวันที่อยู่ติดกัน → สกิลเฟ้อ (leakage) การแบ่งสุ่ม 70/15/15 <b>ใช้ไม่ได้</b>กับงานนี้</div>
+<p><b>วิธีที่ออกแบบ:</b> <code>RollingOriginCV</code> — train อยู่ "ก่อน" test เสมอ + เว้น
+<b>embargo gap = 42 วัน (~6 สัปดาห์)</b> เพื่อตัดการรั่วข้าม lead time สูงสุด + หน้าต่างเป้าหมาย</p>
+<p><span class="pill run">รันสดในรอบนี้</span> <code>python scripts/cv.py</code></p>
+<pre><span class="m"># 5 ปีจำลอง, 4 folds — train มาก่อน test, gap=42 ทุก fold</span>
+fold 1: train [   0..1670] gap=42 test [1713..1740]
+fold 4: train [   0..1754] gap=42 test [1797..1824]
+<span class="g">[OK] ทุก fold: train มาก่อน test, มี gap เพียงพอ, ไม่ทับกัน</span></pre>
+<div class="verdict">✅ ยืนยัน: ไม่มี temporal leakage — โครงสร้างการแบ่งข้อมูลถูกต้องตามนิยาม</div>
+
+<!-- ============ 2 ============ -->
+<h2 id="t2"><span class="num">2.</span>Metric ที่เหมาะสม — ทำไม "Accuracy" จึงห้ามใช้</h2>
+<div class="why"><b>ทำไม:</b> คลื่นความร้อนเป็นเหตุการณ์หายาก (base rate ~11–26%)
+โมเดลที่ทาย "ไม่เกิด" ตลอดก็ได้ accuracy สูงลวงตา งานนี้ต้องการ
+<b>ความน่าจะเป็นที่ calibrate ดี</b> จึงวัดด้วย Brier / BSS / AUC / reliability</div>
+<div class="grid">
+  <div class="stat"><div class="big">Brier</div><div class="lbl">ค่าเฉลี่ย (p−y)² · ต่ำ=ดี</div></div>
+  <div class="stat"><div class="big">BSS</div><div class="lbl">เทียบ baseline · &gt;0=ชนะ</div></div>
+  <div class="stat"><div class="big">AUC</div><div class="lbl">การแยกแยะเหตุการณ์</div></div>
+  <div class="stat"><div class="big">Reliability</div><div class="lbl">ทาย 30% เกิดจริง ~30%?</div></div>
+</div>
+<p class="mut"><b>นิยามความสำเร็จ:</b> ต้อง BSS &gt; 0 เทียบ climatology <b>และ</b> AUC &gt; 0.5 (แยกแยะได้จริง) —
+ดูทั้งสองคู่กัน เพราะ BSS บวกอย่างเดียวอาจเป็น calibration artefact (ดู lead 6 ในกล่องสถานะด้านบน)</p>
+<p><span class="pill run">รันสดในรอบนี้</span> <code>python scripts/evaluate.py</code> — ตรวจ metric กับค่าที่รู้คำตอบ:</p>
+<pre>พยากรณ์สมบูรณ์แบบ : brier=0, bss=1, auc=1            <span class="g">✅</span>
+พยากรณ์ climatology: bss≈0 (เท่า baseline)            <span class="g">✅</span>
+พยากรณ์มั่ว       : auc≈0.48 (สุ่ม), bss=−2.63        <span class="g">✅</span>
+<span class="g">[OK] เมตริกทั้งหมดถูกต้องตามค่าที่ทราบ</span></pre>
+
+<!-- ============ 3 ============ -->
+<h2 id="t3"><span class="num">3.</span>Overfitting Test — บทเรียนเด่นของโครงการ</h2>
+<div class="why"><b>ทำไม:</b> โมเดล tree (LightGBM) มักให้ AUC สูงแต่ "ความน่าจะเป็นเฟ้อ"
+จับได้ด้วยการดู Brier/BSS คู่กับ AUC ไม่ใช่ดู AUC อย่างเดียว</div>
+<p><span class="pill cite">ผลวิจัย CV freeze 2026-06-13</span> lead 2 (y_rm) — กรณี LightGBM:</p>
+<table>
+<tr><th>เวอร์ชัน</th><th class="n">AUC</th><th class="n">BSS</th><th class="n">Brier</th><th>สรุป</th></tr>
+<tr><td>LightGBM (raw, ไม่ calibrate)</td><td class="n">0.708</td><td class="n neg">−0.050</td><td class="n">0.230</td><td>AUC ดูดี แต่ <b>BSS ติดลบ = แพ้ climatology</b></td></tr>
+<tr><td>LightGBM (Platt calibrated)</td><td class="n">0.641</td><td class="n pos">+0.145</td><td class="n">0.188</td><td>หลัง recalibrate → ชนะ baseline ชัดเจน</td></tr>
+</table>
+<div class="verdict warn">⚠️ บทเรียน: AUC สูงไม่ได้แปลว่าใช้ได้ — raw LGBM (AUC 0.708) กลับ "แพ้การเดาตามฤดูกาล"
+เมื่อวัดด้วย BSS การ <b>recalibrate (Platt) บน validation ที่แยกตามเวลา</b> คือสิ่งที่พลิกผล</div>
+
+<!-- ============ 4 ============ -->
+<h2 id="t4"><span class="num">4.</span>Cross-Validation — ผลสกิลเฟสวิจัย (เต็ม lead 2–6)</h2>
+<div class="why"><b>ทำไม:</b> ในเฟสวิจัยต้องรู้ว่าสกิล "เสถียรข้าม fold" หรือฟลุ๊ค
+จึงใช้ 5-fold blocked CV + 95% CI ด้วย moving-block bootstrap + paired test (BH-FDR)</div>
+<p><span class="pill cite">ผลวิจัย CV freeze 2026-06-13</span> target <code>y_rm</code> · BSS เทียบ seasonal climatology:</p>
+<table>
+<tr><th class="n">lead</th><th>model</th><th>BSS [95% CI]</th><th class="n">AUC</th><th class="n">q vs clim</th><th class="n">ชนะ clim</th></tr>
+<tr><td class="n">2</td><td>Logistic (bal+cal)</td><td>+0.153 [+0.057, +0.244]</td><td class="n">0.688</td><td class="n">0.009</td><td class="n yes">✓</td></tr>
+<tr><td class="n">3</td><td>LightGBM (Platt)</td><td>+0.122 [+0.037, +0.176]</td><td class="n">0.593</td><td class="n">0.011</td><td class="n yes">✓</td></tr>
+<tr><td class="n">4</td><td>LightGBM (Platt)</td><td>+0.163 [+0.072, +0.233]</td><td class="n">0.666</td><td class="n">0.005</td><td class="n yes">✓</td></tr>
+<tr><td class="n">5</td><td>Logistic (bal+cal)</td><td>+0.134 [+0.067, +0.187]</td><td class="n">0.631</td><td class="n">0.005</td><td class="n yes">✓</td></tr>
+<tr><td class="n">6</td><td>Logistic (bal+cal)</td><td>+0.112 [+0.046, +0.171]</td><td class="n">0.612</td><td class="n">0.009</td><td class="n yes">✓</td></tr>
+</table>
+<div class="verdict warn">⚠️ ข้อสังเกตสำคัญ (ความซื่อสัตย์): ใน blocked-CV ทุก lead 2–6 ดู "ชนะ climatology"
+แต่พอไปเจอ <b>true out-of-sample (§6)</b> สกิลที่ lead 5–6 <b>หายไป</b> — นี่คือเหตุผลที่ระบบจริง
+<b>เชื่อผล OOS มากกว่า CV</b> และตัดการแสดงผลที่ lead 4 ผล CV ใช้ยืนยันว่า "วิธีการมีศักยภาพ"
+ส่วนผล OOS ใช้ตัดสินว่า "เปิดให้ผู้ใช้เห็นแค่ไหน"</div>
+
+<!-- ============ 5 ============ -->
+<h2 id="t5"><span class="num">5.</span>Stress / OOD Test — ป้อนอุณหภูมิสุดขั้วที่ไม่เคยเห็นตอนเทรน</h2>
+<div class="why"><b>ทำไม:</b> ตามโจทย์ — โมเดลเห็นอุณหภูมิตอนเทรนแค่ ~22–35°C
+(<code>tmax_rm</code> สูงสุด 34.7°C) ถ้าโลกร้อนจนเจอ 45/48/50°C โมเดลจะตอบสมเหตุสมผลไหม?
+ทดสอบ <b>พฤติกรรมโมเดลต่อ input นอกช่วง</b> (คนละเรื่องกับ gate ที่แค่ปฏิเสธค่าผิดปกติ)</div>
+<p><span class="pill run">รันสดในรอบนี้</span> <code>python scripts/test_stress_ood.py</code> — โมเดล lead 2 จริง:</p>
+<pre> tmax(°C) | in-range? | P(heatwave) | vs base
+ ---------|-----------|-------------|--------
+       30 |    yes    |   0.1459    | <span class="m">x1.3</span>
+       35 |    <span class="o">OOD</span>    |   0.4420    | <span class="o">x3.9</span>
+       40 |    <span class="o">OOD</span>    |   0.5340    | <span class="o">x4.7</span>
+       45 |    <span class="o">OOD</span>    |   0.6238    | <span class="o">x5.5</span>
+       50 |    <span class="o">OOD</span>    |   0.7058    | <span class="o">x6.2</span>
+<span class="g">[OK] [0,1] ทุกจุด · monotonic non-decreasing · ที่ 50°C สูงกว่า 2x base_rate</span></pre>
+<div class="verdict">✅ ผ่านครบ: ความน่าจะเป็นไม่ระเบิด/ไม่ NaN, ยิ่งร้อนยิ่งสูงแบบ monotonic, ที่ 50°C → P=0.71
+(สูงกว่า base rate 6.2 เท่า) — แม้ป้อนค่าไกลเกินช่วงเทรน โมเดลยังเสถียรและทิศทางถูก</div>
+
+<!-- ============ 6 ============ -->
+<h2 id="t6"><span class="num">6.</span>Real-World Validation — true out-of-sample (ตัวกำหนดช่วง 2–4)</h2>
+<div class="why"><b>ทำไม:</b> หลายโมเดล test ดีแต่ใช้จริงตก เพราะข้อมูลจริงต่างจากตอนเทรน
+นี่คือเทสต์สำคัญที่สุด: โมเดลเทรนถึงปี 2023 แล้วทดสอบกับข้อมูล ม.ค.–ก.พ. 2024 ที่
+<b>โมเดลไม่เคยเห็น 100%</b> ผ่านโมเดล freeze + climatology freeze (1994–2023)</div>
+<p><span class="pill oos">backtest จริง OOS</span> 10,010 คู่พยากรณ์ (77 จังหวัด × 5 lead × 26 วันออกพยากรณ์)</p>
+<table>
+<tr><th class="n">lead</th><th class="n">BSS</th><th class="n">AUC</th><th class="n">Brier</th><th class="n">ECE</th><th>คำตัดสิน</th></tr>
+<tr class="show"><td class="n">2</td><td class="n pos">+0.298</td><td class="n">0.592</td><td class="n">0.246</td><td class="n">0.079</td><td>✅ สกิลแข็ง</td></tr>
+<tr class="show"><td class="n">3</td><td class="n pos">+0.259</td><td class="n">0.686</td><td class="n">0.211</td><td class="n">0.082</td><td>✅ สกิลแข็ง (AUC ดีสุด)</td></tr>
+<tr class="show"><td class="n">4</td><td class="n pos">+0.073</td><td class="n">0.569</td><td class="n">0.219</td><td class="n">0.121</td><td>✅ สกิลอ่อน (ป้าย Weakening)</td></tr>
+<tr class="hide"><td class="n">5</td><td class="n neg">−0.004</td><td class="n neg">0.437</td><td class="n">0.240</td><td class="n">0.142</td><td>❌ ไม่มีสกิล</td></tr>
+<tr class="hide"><td class="n">6</td><td class="n meh">+0.189</td><td class="n neg">0.462</td><td class="n">0.258</td><td class="n">0.084</td><td>⚠️ AUC&lt;0.5 = artefact</td></tr>
+</table>
+<p><b>Overall BSS = +0.178 [95% CI: +0.065, +0.232]</b> — CI ขอบล่าง &gt; 0 → ชนะ climatology
+<b>อย่างมีนัยสำคัญ</b> (moving-block bootstrap, B=2000, block=28 วัน)</p>
+<div class="verdict">✅ ในโหมดใช้งานจริง (ไม่มองอนาคต) lead 2–4 ยังคงมีสกิลและแยกแยะเหตุการณ์ได้ (AUC&gt;0.5)
+นี่คือหลักฐานตรงว่า "สกิลไม่หายเมื่อออกจากห้องทดลอง" — ในช่วง lead ที่เปิดให้เห็น</div>
+<div class="verdict warn">⚠️ ขอบเขตข้อมูล (ระบุตรง ๆ): backtest ครอบเฉพาะ ม.ค.–ก.พ. 2024 (26 วันออกพยากรณ์)
+เพราะดัชนี MJO (RMM) จากแหล่ง BoM หยุดอัปเดต 2024-02-24 → per-lead CI จึงแคบเกินเชื่อ
+(ใช้ได้แค่ overall CI) เป็นข้อจำกัดด้านข้อมูล ไม่ใช่ของโมเดล</div>
+<h3>6.1 End-to-end pipeline integration test <span class="pill run">รันได้</span></h3>
+<p><code>scripts/test_pipeline_e2e.py</code> สร้าง ERA5 สังเคราะห์ → รัน pipeline เต็ม
+(สกัดฟีเจอร์ → โมเดล freeze → scorecard) → ตรวจ schema ของ output ทุกไฟล์ → ยืนยันสายงานไม่พังเงียบ</p>
+
+<!-- ============ 7 ============ -->
+<h2 id="t7"><span class="num">7.</span>Ablation Test — ตัดกลุ่มฟีเจอร์เพื่อดูว่ากลุ่มไหนสำคัญ</h2>
+<div class="why"><b>ทำไม:</b> พิสูจน์ว่าฟีเจอร์ที่ใส่ "ช่วยจริง" ไม่ใช่ใส่เกิน ทำ leave-one-group-out:
+เอากลุ่มออกแล้วดู BSS ลดลงเท่าไร (ติดลบ = สำคัญ)</div>
+<p><span class="pill cite">ผลวิจัย CV freeze 2026-06-13</span> delta BSS เทียบ full (เฉลี่ยข้ามโมเดล):</p>
+<table>
+<tr><th>กลุ่มที่ตัดออก</th><th class="n">lead2</th><th class="n">lead3</th><th class="n">lead4</th><th class="n">lead5</th><th class="n">lead6</th></tr>
+<tr><td>drop SOIL (ความชื้นดิน)</td><td class="n neg">−0.028</td><td class="n neg">−0.017</td><td class="n neg">−0.006</td><td class="n">+0.015</td><td class="n">−0.001</td></tr>
+<tr><td>drop THERMAL (ความร้อนสะสม)</td><td class="n neg">−0.019</td><td class="n neg">−0.011</td><td class="n neg">−0.031</td><td class="n neg">−0.015</td><td class="n neg">−0.010</td></tr>
+<tr><td>drop MJO</td><td class="n neg">−0.009</td><td class="n">+0.005</td><td class="n">+0.003</td><td class="n">−0.002</td><td class="n">−0.002</td></tr>
+<tr><td>drop ENSO</td><td class="n neg">−0.002</td><td class="n">−0.000</td><td class="n neg">−0.019</td><td class="n">+0.014</td><td class="n">+0.023</td></tr>
+</table>
+<div class="verdict">✅ <b>SOIL</b> สำคัญสุดสำหรับ lead สั้น (2–3) และ <b>THERMAL</b> สำคัญสม่ำเสมอทุก lead —
+ยืนยันสมมติฐานฟิสิกส์ว่าความชื้นดิน + ความร้อนสะสมขับคลื่นความร้อนระยะสั้น</div>
+
+<!-- ============ 8 ============ -->
+<h2 id="t8"><span class="num">8.</span>Baseline Comparison + นัยสำคัญทางสถิติ</h2>
+<div class="why"><b>ทำไม:</b> AI ที่ "เก่ง" ต้องชนะวิธีง่าย ๆ อย่างมีนัยสำคัญ ไม่ใช่ดีขึ้นนิดเดียวแบบบังเอิญ</div>
+<ul>
+  <li><b>Seasonal climatology</b> — ความถี่ในอดีตตามวันในปฏิทิน (เรียนจาก train เท่านั้น)</li>
+  <li><b>Conditional persistence</b> — P(เกิด | สถานะ ณ วันออกพยากรณ์) แทนการทาย 0/1 ดิบ</li>
+</ul>
+<p>ทดสอบด้วย <b>paired bootstrap + Benjamini-Hochberg FDR</b> (กัน false positive จากการเทียบหลายคู่):
+ในเฟสวิจัย (§4) ทุก lead 2–6 ชนะทั้ง climatology และ persistence ที่ q &lt; 0.05
+ในโหมด OOS (§6) overall CI [+0.065, +0.232] ไม่คร่อม 0 → ชนะ climatology อย่างมีนัยสำคัญ
+<span class="pill cite">CV</span> <span class="pill oos">OOS</span></p>
+<div class="verdict">✅ ชนะ baseline ที่แข็งแรงอย่างมีนัยสำคัญ — ส่วนต่างไม่ใช่ความบังเอิญ</div>
+
+<!-- ============ 9 ============ -->
+<h2 id="t9"><span class="num">9.</span>Explainability — โมเดลตัดสินใจเพราะอะไร</h2>
+<div class="why"><b>ทำไม:</b> งานวิทยาศาสตร์/ประกวดต้องการโมเดลที่ไม่ใช่กล่องดำ ต้องอธิบายได้ว่า
+ฟีเจอร์ใดขับการตัดสินใจ และสอดคล้องกับฟิสิกส์</div>
+<p class="mut"><b>หมายเหตุตรงไปตรงมา:</b> ใช้ <b>Permutation Importance</b> (วัด BSS ที่หายเมื่อสุ่มสลับฟีเจอร์)
+ร่วมกับ Ablation §7 — <b>ไม่ได้รัน SHAP/LIME</b> แต่ permutation importance ทำหน้าที่บทบาทเดียวกัน
+และ robust กว่าสำหรับงานเชิงความน่าจะเป็น เพราะวัดผลต่อ <b>เมตริกสกิลจริง</b> โดยตรง</p>
+<p><span class="pill cite">ผลวิจัย CV freeze 2026-06-13</span> top features (lgbm, lead 2):</p>
+<table>
+<tr><th class="n">rank</th><th>feature</th><th class="n">mean drop BSS</th><th>ความหมายเชิงฟิสิกส์</th></tr>
+<tr><td class="n">1</td><td><code>doy_cos</code></td><td class="n">0.0092</td><td>ฤดูกาล (รอบปฏิทิน)</td></tr>
+<tr><td class="n">2</td><td><code>sm1_trend</code></td><td class="n">0.0050</td><td>แนวโน้มความชื้นดินชั้นบน (ดินแห้ง→ร้อน)</td></tr>
+<tr><td class="n">3</td><td><code>mjo_rmm2</code></td><td class="n">0.0048</td><td>เฟสคลื่น MJO</td></tr>
+<tr><td class="n">4</td><td><code>mjo_amp</code></td><td class="n">0.0019</td><td>ความแรง MJO</td></tr>
+</table>
+<div class="verdict">✅ ฟีเจอร์สำคัญสอดคล้องกับกลไกฟิสิกส์ (ฤดูกาล + ความชื้นดิน + MJO) ตรงกับผล ablation §7</div>
+
+<!-- ============ 10 ============ -->
+<h2 id="t10"><span class="num">10.</span>User Acceptance Test (UAT)</h2>
+<div class="why"><b>ทำไม:</b> โมเดลแม่นแต่คนใช้ไม่เข้าใจ/ตื่นตระหนกผิด = ยังไม่พร้อม
+ต้องสื่อสารความน่าจะเป็น + ความไม่แน่นอน + <b>ขอบเขตที่เชื่อถือได้</b> ให้ชัด</div>
+<ul>
+  <li><code>docs/project-dashboard.html</code> — แดชบอร์ดผลพยากรณ์รายจังหวัด + แผนที่ความร้อน</li>
+  <li><code>docs/architecture-explainer.html</code> — อธิบายสถาปัตยกรรมระบบ</li>
+  <li><b>เปิดให้เห็นเฉพาะ lead 2–4</b> และ lead 4 ติดป้าย "Weakening skill" — ออกแบบมา
+  เพื่อไม่ให้ผู้ใช้ตีความสัญญาณระยะไกลที่สกิลต่ำเกินจริง (กันความตื่นตระหนกโดยมิใช่เหตุ)</li>
+</ul>
+<div class="verdict">✅ การจำกัด horizon + ป้ายกำกับสกิล คือการนำ "ผลการทดสอบ §6" มาออกแบบ UX อย่างรับผิดชอบ</div>
+
+<!-- ============ harness ============ -->
+<h2 id="harness"><span class="num">§</span>ภาคผนวก: ความถูกต้องของ "เครื่องมือวัดผล" (ไม่ใช่สกิลโมเดล)</h2>
+<p>ก่อนเชื่อตัวเลขใด ๆ ต้องมั่นใจว่าโค้ดที่ใช้ "วัด" ถูกต้องก่อน ทุกโมดูลหลักมี self-test
+<span class="pill run">รันสด — ผ่านทั้งหมด</span></p>
+<table>
+<tr><th>โมดูล</th><th>ตรวจอะไร</th><th class="n">ผล</th></tr>
+<tr><td><code>evaluate.py</code></td><td>Brier/BSS/AUC/reliability ตรงค่าที่รู้คำตอบ</td><td class="n yes">OK</td></tr>
+<tr><td><code>cv.py</code></td><td>train มาก่อน test, gap≥42, ไม่ทับกัน</td><td class="n yes">OK</td></tr>
+<tr><td><code>models.py</code></td><td>fit/predict_proba, calibration (plain ใกล้ base rate)</td><td class="n yes">OK</td></tr>
+</table>
+<p class="mut">⚠️ ย้ำ: ส่วนนี้พิสูจน์ "เครื่องมือวัดถูกต้อง" เท่านั้น — สกิลโมเดลอยู่ที่ §4 (วิจัย) และ §6 (OOS)</p>
+
+<!-- ============ limits ============ -->
+<h2 id="limit"><span class="num">§</span>ข้อจำกัดและความซื่อสัตย์ของรายงาน</h2>
+<div class="card">
+<ul>
+  <li><b>ตัวเลข operational (กล่องสถานะ + §6)</b> มาจาก true-OOS backtest ม.ค.–ก.พ. 2024
+  เป็น<b>ตัวกำหนดการแสดงผล 2–4</b> และเป็นเกณฑ์ที่เข้มที่สุด</li>
+  <li><b>ตัวเลขเฟสวิจัย (§3,4,7,9)</b> จากไฟล์ freeze 2026-06-13 (blocked-CV) มองโลกแง่ดีกว่า OOS —
+  ใช้ยืนยัน "วิธีการมีศักยภาพ" ไม่ใช่สเปคที่ผู้ใช้จะได้</li>
+  <li><b>Stress test + self-test</b> รันสดในรอบนี้</li>
+  <li><b>หน้าต่าง OOS แคบ</b> (26 วันออกพยากรณ์) เพราะ MJO RMM หยุดอัปเดต 2024-02-24 →
+  per-lead CI เชื่อไม่ได้ ใช้ได้แค่ overall CI ; การต่อแหล่ง MJO ใหม่จะทำให้ CI รายlead แกร่งขึ้น</li>
+  <li><b>Explainability</b> ใช้ permutation importance + ablation ไม่ใช่ SHAP/LIME (ระบุชัด §9)</li>
+  <li><b>ขอบเขตเวลา</b> ข้อมูลครอบ ม.ค.–ก.ค. (ฤดูร้อนไทย + buffer) ไม่ครอบทั้งปี</li>
+  <li><b>สกิลที่เปิดให้เห็น modest</b> (lead 4 BSS +0.073) — นำเสนอเป็น "เครื่องมือบ่งชี้ความเสี่ยง"
+  ไม่ใช่ "ตัวพยากรณ์ฟันธง" ตามความเป็นจริงของการพยากรณ์ sub-seasonal</li>
+</ul>
+</div>
+
+<footer>
+  สร้างเมื่อ 2026-06-20 · โครงการ DeepSeek_Heatwave · Sub-seasonal Heatwave Forecast (Thailand)<br>
+  ที่มา operational <span class="pill oos">OOS</span>: <code>outputs/operational/verification/{summary.md,scorecard.csv}</code> ·
+  เฟสวิจัย <span class="pill cite">CV</span>: <code>outputs/analysis/{results_master.md,ablation.csv,permutation_importance.csv}</code><br>
+  รันสด <span class="pill run">live</span>: <code>scripts/{cv,evaluate,models,test_stress_ood}.py</code> ·
+  ตัวเลขเฟสวิจัย ณ freeze 2026-06-13 · OOS backtest = เทรนถึง 2023, ทดสอบ ม.ค.–ก.พ. 2024
+</footer>
+
+</div>
+</body>
+</html>
