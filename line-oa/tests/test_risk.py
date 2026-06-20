@@ -56,3 +56,5 @@ def test_select_on_real_fixture_runs():
     assert isinstance(sel["high"], list)
     assert isinstance(sel["elevated"], list)
     assert "issue_date" in sel
+    leads_used = {r["lead"] for r in sel["high"] + sel["elevated"]}
+    assert leads_used.issubset({2, 3, 4})  # lead 5/6 must never be selected
