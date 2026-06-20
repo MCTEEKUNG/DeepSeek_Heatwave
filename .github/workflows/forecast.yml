@@ -82,3 +82,12 @@ jobs:
               sleep 10
             done
           fi
+
+      - name: ส่ง LINE broadcast รายสัปดาห์
+        if: ${{ success() }}
+        continue-on-error: true
+        env:
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+        run: |
+          pip install requests
+          python line-oa/scripts/broadcast_weekly.py --file docs/forecast_provinces.json
