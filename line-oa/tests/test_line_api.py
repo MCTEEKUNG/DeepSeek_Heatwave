@@ -15,6 +15,7 @@ def test_verify_signature_valid_and_invalid():
     assert line_api.verify_signature(secret, body, good) is True
     assert line_api.verify_signature(secret, body, "wrong") is False
     assert line_api.verify_signature(secret, body, "") is False
+    assert line_api.verify_signature("", body, good) is False  # empty secret -> False
 
 
 def test_text_message_shape():
@@ -26,6 +27,7 @@ def test_reply_posts_expected_payload(monkeypatch):
 
     def fake_post(url, headers=None, json=None, timeout=10):
         captured["url"], captured["headers"], captured["json"] = url, headers, json
+        captured["timeout"] = timeout
         class R: status_code = 200; text = "{}"
         return R()
 
@@ -35,6 +37,7 @@ def test_reply_posts_expected_payload(monkeypatch):
     assert captured["headers"]["Authorization"] == "Bearer tok"
     assert captured["json"]["replyToken"] == "rt"
     assert captured["json"]["messages"][0]["text"] == "hi"
+    assert captured["timeout"] == 10
 
 
 def test_broadcast_posts_expected_payload(monkeypatch):
@@ -42,6 +45,7 @@ def test_broadcast_posts_expected_payload(monkeypatch):
 
     def fake_post(url, headers=None, json=None, timeout=10):
         captured["url"], captured["json"] = url, json
+        captured["timeout"] = timeout
         class R: status_code = 200; text = "{}"
         return R()
 
@@ -49,3 +53,4 @@ def test_broadcast_posts_expected_payload(monkeypatch):
     line_api.broadcast("tok", [line_api.text_message("hi")])
     assert captured["url"].endswith("/message/broadcast")
     assert captured["json"]["messages"][0]["text"] == "hi"
+    assert captured["timeout"] == 10
