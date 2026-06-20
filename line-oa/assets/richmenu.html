@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:2500px; height:843px; overflow:hidden; }
+  .menu { display:flex; width:2500px; height:843px;
+    font-family:"Leelawadee UI","Tahoma","Sarabun",sans-serif; }
+  .panel { width:833.33px; height:843px; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; color:#fff; position:relative; }
+  .panel + .panel { border-left:6px solid #0d1117; }
+  .p1 { background:linear-gradient(160deg,#c43c1f,#7a2412); }
+  .p2 { background:linear-gradient(160deg,#2b7bf2,#163e8c); }
+  .p3 { background:linear-gradient(160deg,#23a684,#125a47); }
+  .icon { font-size:170px; line-height:1; margin-bottom:24px; }
+  .label { font-size:128px; font-weight:700; line-height:1.18; text-align:center;
+    text-shadow:0 4px 14px rgba(0,0,0,.35); }
+</style>
+</head>
+<body>
+  <div class="menu">
+    <div class="panel p1">
+      <div class="icon">🌡️</div>
+      <div class="label">ความเสี่ยง<br>สัปดาห์นี้</div>
+    </div>
+    <div class="panel p2">
+      <div class="icon">🗺️</div>
+      <div class="label">ดูแผนที่<br>ภาพรวม</div>
+    </div>
+    <div class="panel p3">
+      <div class="icon">📖</div>
+      <div class="label">วิธีอ่าน<br>/ เกี่ยวกับ</div>
+    </div>
+  </div>
+</body>
+</html>
