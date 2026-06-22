@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "model": "logistic_balanced_cal",
-  "generated_at": "2026-06-19T09:03:43.551018+00:00",
+  "generated_at": "2026-06-22T07:30:14.383825+00:00",
   "n_provinces": 77,
   "provinces": [
     {
