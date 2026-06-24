@@ -11,6 +11,7 @@ PASS, WARN, FAIL = "PASS", "WARN", "FAIL"
 # ไม่ใช่ (วันนี้ - issue_date) — เพราะตัวแยก demo(ใช้ข้อมูล 2023) ออกจากพยากรณ์สด(ERA5 ล่าช้า ~6 วัน)
 # คือ "ข้อมูลล้าหลังตอนสร้างแค่ไหน": demo gap ~898 วัน vs operational ~16 วัน.
 MAX_DATA_LAG_DAYS = 30           # generated_at - issue_date เกินนี้ = ใช้ข้อมูลเก่า/ผิด (block)
+MAX_ISSUE_AGE_DAYS = 21          # วันนี้ - issue_date เกินนี้ = pipeline ค้าง ไม่เดินหน้า (block)
 MAX_GENERATED_AGE_DAYS = 14      # วันนี้ - generated_at เกินนี้ = ไฟล์ไม่ถูก refresh (WARN)
 MAX_HIGH_FRACTION = 0.80         # จังหวัดที่ขึ้น High พร้อมกันเกินสัดส่วนนี้ = ควรดูด้วยตา (WARN เท่านั้น)
 MAX_RATIO = 6.0                  # ratio_vs_normal เกินนี้ = ควรตรวจสอบ (WARN)
@@ -74,6 +75,37 @@ def check_data_lag(obj: dict) -> CheckResult:
                        blocking=True)
 
 
+def check_issue_date_current(obj: dict) -> CheckResult:
+    """Freshness (blocking): วันนี้ - issue_date ล่าสุด — จับ 'pipeline ค้าง'.
+
+    ต่างจาก check_data_lag (generated_at - issue_date) ที่จับ 'demo/ข้อมูลผิดยุค' (gap ใหญ่
+    ตอนสร้าง). เคสนี้คือ pipeline รันสด (generated_at ใหม่เสมอ) แต่ issue_date ไม่ขยับตาม
+    ปฏิทิน เพราะ input ค้าง — เช่น ERA5/CDS คืนข้อมูลสั้น/เก่าเงียบๆ, soil ไม่อัปเดต, หรือ
+    ฟีเจอร์ที่ประกาศช้า. check_data_lag พลาดเคสนี้ตอนกลางเดือน (gap ยังไม่ถึง 30) — ตัวนี้ปิดช่องนั้น.
+
+    เช็คตอน publish (issue_date เพิ่งคำนวณสด): พยากรณ์สุขภาพดี issue_date เก่าแค่ ~6-16 วัน
+    (ERA5 latency); pipeline ค้างจะโตเรื่อยๆ ไม่หยุด -> threshold 21 แยกสองกรณีได้ชัด."""
+    cat = "freshness"
+    provs = obj.get("provinces") or []
+    if not provs:
+        return CheckResult("issue_date_current", cat, FAIL, "ไม่มี provinces", blocking=True)
+    issues = {p.get("issue_date") for p in provs}
+    try:
+        ages = [(_today() - date.fromisoformat(d)).days for d in issues if d]
+    except (ValueError, TypeError):
+        return CheckResult("issue_date_current", cat, FAIL,
+                           f"issue_date parse ไม่ได้: {issues}", blocking=True)
+    if not ages:
+        return CheckResult("issue_date_current", cat, FAIL, "ไม่มี issue_date", blocking=True)
+    worst = max(ages)            # issue_date เก่าสุดเทียบวันนี้
+    if worst > MAX_ISSUE_AGE_DAYS:
+        return CheckResult("issue_date_current", cat, FAIL,
+                           f"issue_date เก่า {worst} วันเทียบวันนี้ (เกิน {MAX_ISSUE_AGE_DAYS}) — "
+                           f"pipeline อาจค้าง (input ไม่อัปเดต) แม้ generated_at จะสด", blocking=True)
+    return CheckResult("issue_date_current", cat, PASS,
+                       f"issue_date เก่า {worst} วันเทียบวันนี้ (<= {MAX_ISSUE_AGE_DAYS})", blocking=True)
+
+
 def check_generated_recent(obj: dict) -> CheckResult:
     """Freshness (WARN): วันนี้ - generated_at — ไฟล์ถูก refresh ล่าสุดเมื่อไร (ไม่ block)."""
     cat = "freshness"
@@ -126,7 +158,8 @@ def check_ratio_bounds(obj: dict) -> CheckResult:
     return CheckResult("ratio_bounds", cat, PASS, f"ratio_vs_normal สูงสุด {worst}")
 
 
-FRESHNESS_PLAUSIBILITY = [check_data_lag, check_generated_recent, check_all_high_fraction, check_ratio_bounds]
+FRESHNESS_PLAUSIBILITY = [check_data_lag, check_issue_date_current, check_generated_recent,
+                          check_all_high_fraction, check_ratio_bounds]
 
 
 def _selftest() -> None:
@@ -140,6 +173,7 @@ def _selftest() -> None:
         {"issue_date": op_issue, "forecasts": [{"risk_level_en": "Low", "ratio_vs_normal": 0.8}]},
     ]}
     assert check_data_lag(good).status == PASS, "พยากรณ์สด (lag 16 วัน) ต้องผ่าน data_lag"
+    assert check_issue_date_current(good).status == PASS, "issue 16 วัน ต้องผ่าน issue_date_current"
     assert check_generated_recent(good).status == PASS
     assert check_all_high_fraction(good).status == PASS
     # negative: demo — สร้าง 2026 แต่ใช้ข้อมูล 2023 (gap ~898 วัน) ต้อง FAIL + blocking
@@ -147,6 +181,14 @@ def _selftest() -> None:
                             "forecasts": [{"risk_level_en": "High", "ratio_vs_normal": 4.0}]}]}
     r = check_data_lag(stale)
     assert r.status == FAIL and r.blocking, "demo (ข้อมูล 2023) ต้อง FAIL+blocking"
+    assert check_issue_date_current(stale).status == FAIL, "demo 2023 ต้อง FAIL issue_date_current ด้วย"
+    # gap case (เหมือนบั๊ก Niño): สร้างวันนี้ แต่ issue_date ค้าง 25 วัน -> data_lag ยังผ่าน (25<30)
+    # แต่ issue_date_current ต้อง FAIL+block (25>21). นี่คือช่องที่ guard ใหม่ปิด.
+    stuck = {"generated_at": now_iso, "provinces": [{"issue_date": (today - timedelta(days=25)).isoformat(),
+                            "forecasts": [{"risk_level_en": "Normal", "ratio_vs_normal": 1.1}]}]}
+    assert check_data_lag(stuck).status == PASS, "gap 25 วัน (<30) data_lag ยังผ่าน — ช่องโหว่เดิม"
+    rs = check_issue_date_current(stuck)
+    assert rs.status == FAIL and rs.blocking, "pipeline ค้าง 25 วัน ต้อง FAIL+block ด้วย issue_date_current"
     # negative: generated_at เก่า -> generated_recent = WARN (ไม่ block)
     old_gen = {"generated_at": (datetime.now(timezone.utc) - timedelta(days=40)).isoformat(),
                "provinces": [{"issue_date": (today - timedelta(days=46)).isoformat(),
