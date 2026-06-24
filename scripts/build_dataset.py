@@ -201,11 +201,17 @@ def mjo_features(path: Path) -> pd.DataFrame:
 
 
 def nino_lagged_daily(path: Path, dates: pd.DatetimeIndex) -> pd.Series:
-    """Niño3.4 รายเดือน -> รายวันด้วยค่า 'เดือนก่อนหน้า' (lag 1 เดือน กันใช้ข้อมูลยังไม่ประกาศ)."""
+    """Niño3.4 รายเดือน -> รายวันด้วยค่า 'เดือนก่อนหน้า' (lag 1 เดือน กันใช้ข้อมูลยังไม่ประกาศ).
+
+    มองหาเดือน "ก่อนหน้า" ของแต่ละวันโดยตรง (วันในเดือน M -> ใช้ค่า Niño เดือน M-1)
+    แทนการ shift ทั้งซีรีส์แล้ว reindex ด้วยเดือนปัจจุบัน. วิธีเดิมต้องมี "แถวเดือน
+    ปัจจุบัน" อยู่ในดัชนี Niño ด้วย แต่ Niño รายเดือนประกาศช้า ~1 เดือน (เช่น ค่าเดือน
+    มิ.ย. ออกต้น ก.ค.) -> ทุกวันของเดือนล่าสุดได้ NaN -> ถูก dropna -> issue_date
+    ค้างอยู่สิ้นเดือนก่อน. วิธีนี้ใช้แค่ค่าเดือนก่อนหน้า (ประกาศแล้ว) จึงเดินหน้าถึง
+    ปัจจุบันได้. ค่าของทุกเดือนในอดีต (ข้อมูลครบ) เท่าเดิมเป๊ะ -> train/serve parity คงเดิม."""
     nino = pd.read_csv(path, parse_dates=["date"], index_col="date")["nino34_anom"]
-    lagged = nino.shift(1)  # index รายเดือน (วันที่ 1) ต่อเนื่อง -> เลื่อน 1 แถว = เดือนก่อน
-    month_key = pd.DatetimeIndex(dates).to_period("M").to_timestamp()
-    return pd.Series(lagged.reindex(month_key).values, index=dates, name="nino34_lag1m")
+    prev_month = (pd.DatetimeIndex(dates).to_period("M") - 1).to_timestamp()
+    return pd.Series(nino.reindex(prev_month).values, index=dates, name="nino34_lag1m")
 
 
 # ------------------------------------------------------------------- build
