@@ -3,7 +3,17 @@
 Reads pre-computed CSVs from outputs/operational/verification/ and writes
 docs/verification.json in the schema expected by services/forecastService.ts.
 
-Run:
+IMPORTANT — operational data only:
+  The accuracy page is a LIVE track record (what the deployed model actually
+  predicted week-by-week vs. what happened). It must reflect operational pairs
+  (operational_pairs.csv, produced by verify.archive.verify_closed_windows()
+  when forecast windows close) plus a scorecard scored from THOSE pairs.
+  Do NOT publish backtest_pairs.csv here — backtest is retrospective validation
+  for the paper, not the live track record. Mixing them shows stale 2024 dates
+  as if they were recent runs. The frontend honestly shows "track record is
+  building" until real operational data exists; keep it that way.
+
+Run (only once operational_pairs.csv exists and scorecard.csv is scored from it):
   python scripts/verify/export_verification_json.py
   python scripts/verify/export_verification_json.py --pairs outputs/operational/verification/operational_pairs.csv
 """
@@ -44,7 +54,7 @@ def _outcome(bss_val: float) -> str:
 
 
 def export(
-    pairs_path: Path = VERIFY_DIR / "backtest_pairs.csv",
+    pairs_path: Path = VERIFY_DIR / "operational_pairs.csv",
     scorecard_path: Path = VERIFY_DIR / "scorecard.csv",
     reliability_path: Path = VERIFY_DIR / "reliability.csv",
     out_path: Path = OUT_JSON,
@@ -131,8 +141,8 @@ def export(
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="Export verification.json for frontend accuracy screen")
-    ap.add_argument("--pairs", type=Path, default=VERIFY_DIR / "backtest_pairs.csv",
-                    help="backtest_pairs.csv หรือ operational_pairs.csv")
+    ap.add_argument("--pairs", type=Path, default=VERIFY_DIR / "operational_pairs.csv",
+                    help="operational_pairs.csv (live track record). อย่าใช้ backtest_pairs.csv")
     ap.add_argument("--scorecard", type=Path, default=VERIFY_DIR / "scorecard.csv")
     ap.add_argument("--reliability", type=Path, default=VERIFY_DIR / "reliability.csv")
     ap.add_argument("--out", type=Path, default=OUT_JSON)

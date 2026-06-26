@@ -14,7 +14,6 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import validate_contract as vc  # noqa: E402
 
 DOCS_JSON = ROOT / "docs" / "forecast_provinces.json"
-DOCS_VERIFY_JSON = ROOT / "docs" / "verification.json"
 
 
 def _dest_issue_date(path: Path) -> str | None:
@@ -95,10 +94,6 @@ def publish_contract(contract_json: Path) -> None:
         raise SystemExit(1)
     sync(DOCS_JSON, contract_json)
     subprocess.run(["git", "-C", str(repo), "add", "forecast_provinces.json"], check=True)
-    # sync verification.json ถ้ามี — ไม่บล็อก publish ถ้าไม่มีไฟล์
-    if DOCS_VERIFY_JSON.exists():
-        sync(DOCS_VERIFY_JSON, contract_json.parent / "verification.json")
-        subprocess.run(["git", "-C", str(repo), "add", "verification.json"], check=True)
     # 0 = ไม่มี staged diff, 1 = มี staged diff
     staged = subprocess.run(["git", "-C", str(repo), "diff", "--cached", "--quiet"]).returncode == 1
     if staged:
@@ -154,12 +149,6 @@ def main() -> int:
             print(f"[ข้าม] forecast already archived for {new_issue}")
 
     if args.publish:
-        # export verification.json ก่อน push — ไม่บล็อก publish ถ้า scorecard ยังไม่มี
-        try:
-            from verify.export_verification_json import export as _export_verify
-            _export_verify()
-        except Exception as _e:
-            print(f"[ข้าม] verification.json export ล้มเหลว (ไม่บล็อก): {_e}")
         publish_contract(default_contract())
     return 0
 
