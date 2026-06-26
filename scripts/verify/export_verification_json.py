@@ -132,8 +132,12 @@ def export(
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    try:
+        shown = out_path.relative_to(ROOT)
+    except ValueError:
+        shown = out_path
     print(
-        f"[OK] verification.json -> {out_path.relative_to(ROOT)} "
+        f"[OK] verification.json -> {shown} "
         f"(bss={result.get('bss')}, weeks={len(result.get('weeks', []))})"
     )
     return result

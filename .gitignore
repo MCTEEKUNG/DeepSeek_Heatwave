@@ -21,6 +21,8 @@ outputs/*
 !outputs/operational/
 outputs/operational/*
 !outputs/operational/verification/
+# forecast snapshots must persist across CI runs so windows can be scored weeks later
+!outputs/operational/forecasts/
 
 # tool artifacts
 .playwright-mcp/

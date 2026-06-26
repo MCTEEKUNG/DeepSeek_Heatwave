@@ -66,15 +66,22 @@ jobs:
       - name: ทำนาย (operational) + validate + publish -> GitHub Pages
         run: python scripts/publish_bridge.py --publish
 
-      - name: Commit docs/forecast_provinces.json กลับ repo หลัก
+      - name: อัปเดต verification (score window ที่ปิด + publish verification.json)
+        if: ${{ success() }}
+        continue-on-error: true
+        run: python scripts/verify/update_verification.py --publish
+
+      - name: Commit forecast + verification artifacts กลับ repo หลัก
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/forecast_provinces.json
+          # forecast contract + archive snapshot (ต้องคงไว้เพื่อ score window ภายหลัง) + verification
+          git add docs/forecast_provinces.json docs/verification.json \
+                  outputs/operational/forecasts/ outputs/operational/verification/ 2>/dev/null || true
           if git diff --staged --quiet; then
             echo "ไม่มีการเปลี่ยนแปลง — ข้ามการ commit"
           else
-            git commit -m "data: อัปเดตพยากรณ์รายจังหวัด $(date -u +%Y-%m-%d)"
+            git commit -m "data: อัปเดตพยากรณ์ + verification รายจังหวัด $(date -u +%Y-%m-%d)"
             for attempt in 1 2 3; do
               echo "Push attempt $attempt/3..."
               git pull --rebase origin main && git push && break
